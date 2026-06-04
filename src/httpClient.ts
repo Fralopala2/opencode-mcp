@@ -84,9 +84,18 @@ export class HttpOpenCodeClient {
         return this.request<Agent[]>('GET', '/agent');
     }
 
+    async listModels(): Promise<string[]> {
+        try {
+            const data = await this.request<{ connected?: string[] }>('GET', '/provider');
+            return data.connected || [];
+        } catch {
+            return [];
+        }
+    }
+
     async promptAsync(
         sessionId: string,
-        body: { agent?: string; parts: PromptPart[] }
+        body: { agent?: string; model?: string; parts: PromptPart[] }
     ): Promise<void> {
         await this.request<void>('POST', `/session/${sessionId}/prompt_async`, body);
     }

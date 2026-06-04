@@ -12,6 +12,7 @@ export interface StreamUpdate {
     text: string;
     done: boolean;
     error?: string;
+    metrics?: { input: number; output: number };
 }
 
 export class OpenCodeService implements vscode.Disposable {
@@ -212,10 +213,22 @@ export class OpenCodeService implements vscode.Disposable {
         return this.client.listAgents();
     }
 
+    async listModels(): Promise<string[]> {
+        if (!this.client) {
+            await this.connect();
+        }
+        if (!this.client) {
+            return [];
+        }
+        return this.client.listModels();
+    }
+
     async sendPrompt(
         text: string,
         agent: string | undefined,
-        contextParts: PromptPart[]
+        model: string | undefined,
+        contextParts: PromptPart[],
+        attachments: PromptPart[] = []
     ): Promise<void> {
         if (!this.client) {
             await this.connect();
@@ -228,13 +241,14 @@ export class OpenCodeService implements vscode.Disposable {
         const settings = getOpenCodeSettings();
         const selectedAgent = agent || settings.defaultAgent || undefined;
 
-        const parts: PromptPart[] = [...contextParts, { type: 'text', text }];
+        const parts: PromptPart[] = [...contextParts, ...attachments, { type: 'text', text }];
 
         this.activeStream.set(sessionId, '');
 
         try {
             await this.client.promptAsync(sessionId, {
                 agent: selectedAgent,
+                model: model || undefined,
                 parts,
             });
         } catch (error) {
@@ -311,7 +325,12 @@ export class OpenCodeService implements vscode.Disposable {
                 ? partsToDisplayText(lastAssistant.parts)
                 : this.activeStream.get(sessionId) ?? '';
             this.activeStream.delete(sessionId);
-            this.emitStream({ sessionId, text, done: true });
+            this.emitStream({ 
+                sessionId, 
+                text, 
+                done: true,
+                metrics: lastAssistant?.info.cost 
+            });
         }
 
         if (event.type === 'permission.updated') {

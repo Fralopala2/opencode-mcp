@@ -22,7 +22,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 if (update.error) {
                     this.post({ type: 'error', message: update.error });
                 } else {
-                    this.post({ type: 'assistantDone', text: update.text });
+                    this.post({ type: 'assistantDone', text: update.text, metrics: update.metrics });
                 }
                 this.post({ type: 'status', state: 'idle' });
             } else {
@@ -71,6 +71,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         this.selectedAgent = settings.defaultAgent;
         try {
             const agents = await this.service.listAgents();
+            const models = await this.service.listModels();
             const primary = agents.filter((a) => a.mode === 'primary' || a.mode === 'all');
             this.post({
                 type: 'init',
@@ -78,6 +79,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     name: a.name,
                     description: a.description ?? '',
                 })),
+                models,
                 selectedAgent: this.selectedAgent,
                 context: this.contextAttachments
                     .getItems()
@@ -102,6 +104,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         type: string;
         text?: string;
         agent?: string;
+        model?: string;
+        attachments?: any[];
     }): Promise<void> {
         switch (message.type) {
             case 'ready':
@@ -109,20 +113,22 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 break;
             case 'send': {
                 const text = message.text?.trim();
-                if (!text) {
+                const attachments = message.attachments || [];
+                if (!text && attachments.length === 0) {
                     return;
                 }
                 const agent = message.agent || this.selectedAgent || undefined;
+                const model = message.model || undefined;
                 const contextParts = [...this.contextAttachments.getItems()];
                 this.contextAttachments.clear();
-                this.post({ type: 'user', text });
+                this.post({ type: 'user', text: text || '(Solo adjuntos)' });
                 this.post({ type: 'status', state: 'busy' });
                 this.post({
                     type: 'context',
                     items: [],
                 });
                 try {
-                    await this.service.sendPrompt(text, agent, contextParts);
+                    await this.service.sendPrompt(text || '', agent, model, contextParts, attachments);
                 } catch (error) {
                     const msg = error instanceof Error ? error.message : String(error);
                     this.post({ type: 'error', message: msg });
@@ -161,6 +167,47 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 } catch (error) {
                     const msg = error instanceof Error ? error.message : String(error);
                     this.post({ type: 'error', message: msg });
+                }
+                break;
+            case 'attachFile':
+                const fileUris = await vscode.window.showOpenDialog({
+                    canSelectMany: true,
+                    openLabel: 'Adjuntar',
+                });
+                if (fileUris && fileUris.length > 0) {
+                    for (const uri of fileUris) {
+                        try {
+                            const buffer = await vscode.workspace.fs.readFile(uri);
+                            let mime = 'application/octet-stream';
+                            const ext = path.extname(uri.fsPath).toLowerCase();
+                            if (['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext)) {
+                                mime = `image/${ext.replace('.', '').replace('jpg', 'jpeg')}`;
+                                const b64 = Buffer.from(buffer).toString('base64');
+                                this.post({
+                                    type: 'fileAttached',
+                                    attachment: {
+                                        type: 'file',
+                                        mime,
+                                        filename: path.basename(uri.fsPath),
+                                        url: `data:${mime};base64,${b64}`,
+                                    },
+                                });
+                            } else {
+                                // Enviar la ruta del archivo para archivos locales no-imágenes
+                                this.post({
+                                    type: 'fileAttached',
+                                    attachment: {
+                                        type: 'file',
+                                        mime: 'text/plain',
+                                        filename: path.basename(uri.fsPath),
+                                        url: `file://${uri.fsPath}`,
+                                    },
+                                });
+                            }
+                        } catch (e) {
+                            this.post({ type: 'error', message: `No se pudo adjuntar: ${path.basename(uri.fsPath)}` });
+                        }
+                    }
                 }
                 break;
             default:

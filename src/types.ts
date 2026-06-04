@@ -13,6 +13,10 @@ export interface Session {
 export interface MessageInfo {
     role: string;
     id: string;
+    cost?: {
+        input: number;
+        output: number;
+    };
 }
 
 export type TextPartInput = {

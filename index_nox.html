@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}} 'unsafe-inline'; script-src 'nonce-{{nonce}}'; img-src data: {{cspSource}} vscode-resource: https:;">
 <title>OpenCode</title>
 <style>
   :root {
@@ -888,6 +887,177 @@
   </div>
 </div>
 
-<script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+<script>
+  const messagesEl = document.getElementById('messages');
+  const inputEl    = document.getElementById('chatInput');
+  const sendBtn    = document.getElementById('sendBtn');
+  const typingEl   = document.getElementById('typing');
+  const welcomeEl  = document.getElementById('welcome');
+  const modelBtn   = document.getElementById('modelBtn');
+  const modelNameEl = document.getElementById('modelName');
+  const dropdown   = document.getElementById('modelDropdown');
+  const dropOverlay = document.getElementById('dropOverlay');
+
+  let selectedModel = 'claude-sonnet-4';
+  let selectedMode  = 'auto';
+  let sessionMsgs   = [];
+
+  /* auto-resize textarea */
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  });
+
+  /* envio con Enter (Shift+Enter = salto) */
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  sendBtn.addEventListener('click', sendMessage);
+
+  function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    appendMsg('user', text);
+    showTyping();
+    setTimeout(() => {
+      hideTyping();
+      appendMsg('ai', getMockReply(text));
+    }, 1400);
+  }
+
+  function sendQuick(text) {
+    inputEl.value = text;
+    sendMessage();
+  }
+
+  function appendMsg(role, text) {
+    if (welcomeEl) welcomeEl.style.display = 'none';
+
+    const now = new Date();
+    const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+
+    const msgEl = document.createElement('div');
+    msgEl.className = 'msg ' + role;
+
+    const isCode = text.includes('```') || text.includes('function') || text.includes('const ');
+    const bodyHtml = renderBody(text);
+
+    msgEl.innerHTML = `
+      <div class="msg-header">
+        <div class="msg-avatar ${role}">${role === 'ai' ? 'OC' : 'Tu'}</div>
+        <span class="msg-role">${role === 'ai' ? 'opencode' : 'tu'}</span>
+        <span class="msg-time">${time}</span>
+      </div>
+      <div class="msg-body">${bodyHtml}</div>
+      <div class="msg-actions">
+        <button class="msg-act-btn" onclick="copyMsg(this)">
+          <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          copiar
+        </button>
+        ${role === 'ai' ? `<button class="msg-act-btn"><svg viewBox="0 0 24 24"><path d="M23 7L16 12L23 17V7zM1 5h12a2 2 0 012 2v10a2 2 0 01-2 2H1a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>insertar en editor</button>` : ''}
+      </div>
+    `;
+
+    typingEl.before(msgEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function renderBody(text) {
+    return text
+      .replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) =>
+        `<pre><code>${escHtml(code.trim())}</code></pre>`)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\n/g, '<br>');
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function showTyping() {
+    typingEl.classList.add('visible');
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function hideTyping() {
+    typingEl.classList.remove('visible');
+  }
+
+  function copyMsg(btn) {
+    const body = btn.closest('.msg').querySelector('.msg-body');
+    navigator.clipboard.writeText(body.innerText);
+    btn.textContent = 'copiado ✓';
+    setTimeout(() => {
+      btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> copiar`;
+    }, 1500);
+  }
+
+  function getMockReply(text) {
+    const t = text.toLowerCase();
+    if (t.includes('bug') || t.includes('error'))
+      return 'He analizado el archivo. Encontre un posible problema en la linea 42:\n\n```ts\n// problema: llamada asincrona sin await\nconst data = fetchUser(id);\n```\n\nPrueba a añadir `await` delante de la llamada.';
+    if (t.includes('test'))
+      return 'Aqui tienes los tests basicos:\n\n```ts\ndescribe("fetchUser", () => {\n  it("deberia retornar usuario", async () => {\n    const user = await fetchUser("123");\n    expect(user.id).toBe("123");\n  });\n});\n```';
+    if (t.includes('refactor'))
+      return 'Sugerencia de refactor: extrae la logica de validacion a una funcion separada `validateInput()` para reducir la complejidad ciclomatica del metodo principal.';
+    return 'Entendido. Analizando el contexto del proyecto... ¿Hay alguna parte especifica en la que quieras que me centre primero?';
+  }
+
+  /* dropdown modelo */
+  modelBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    dropdown.classList.toggle('open');
+    dropOverlay.classList.toggle('open');
+  });
+
+  dropOverlay.addEventListener('click', () => {
+    dropdown.classList.remove('open');
+    dropOverlay.classList.remove('open');
+  });
+
+  dropdown.querySelectorAll('[data-model]').forEach(item => {
+    item.addEventListener('click', () => {
+      selectedModel = item.dataset.model;
+      modelNameEl.textContent = selectedModel;
+      dropdown.querySelectorAll('[data-model]').forEach(i => i.querySelector('.dropdown-check').textContent = '');
+      item.querySelector('.dropdown-check').textContent = '✓';
+      dropdown.classList.remove('open');
+      dropOverlay.classList.remove('open');
+    });
+  });
+
+  const modePill = document.getElementById('modePill');
+  dropdown.querySelectorAll('[data-mode]').forEach(item => {
+    item.addEventListener('click', () => {
+      selectedMode = item.dataset.mode;
+      modePill.textContent = selectedMode;
+      dropdown.querySelectorAll('[data-mode]').forEach(i => i.querySelector('.dropdown-check').textContent = '');
+      item.querySelector('.dropdown-check').textContent = '✓';
+    });
+  });
+
+  function addCtxTag() {
+    const name = prompt('Nombre del archivo o ruta:');
+    if (!name) return;
+    const bar = document.getElementById('contextBar');
+    const addBtn = bar.querySelector('.ctx-add');
+    const tag = document.createElement('div');
+    tag.className = 'ctx-tag';
+    tag.innerHTML = `
+      <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h8M4 8h6M4 11h4" stroke-linecap="round"/></svg>
+      ${name}
+      <span class="ctx-tag-close" onclick="this.closest('.ctx-tag').remove()">
+        <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>
+      </span>
+    `;
+    bar.insertBefore(tag, addBtn);
+  }
+</script>
 </body>
 </html>
