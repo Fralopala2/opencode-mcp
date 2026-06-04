@@ -169,7 +169,7 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
     "lint": "eslint src --ext ts",
-    "package": "vsce package"
+    "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",

@@ -101,7 +101,8 @@ export class OpenCodeService implements vscode.Disposable {
 
             if (!health.healthy && settings.autoStartServer) {
                 this.managedServer?.close();
-                this.managedServer = await startOpencodeServer(settings.serverPort);
+                const cwd = getWorkspaceDirectory();
+                this.managedServer = await startOpencodeServer(settings.serverPort, cwd);
                 baseUrl = this.managedServer.url.replace(/\/$/, '');
                 this.client = this.buildClient(baseUrl);
                 health = await this.client.health();

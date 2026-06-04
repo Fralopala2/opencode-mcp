@@ -50,6 +50,7 @@ function resolveOpencodeExecutable(): { command: string; spawnOptions?: SpawnOpt
 
 export async function startOpencodeServer(
     port: number,
+    cwd?: string,
     hostname = '127.0.0.1',
     timeoutMs = 20000
 ): Promise<ManagedServer> {
@@ -57,6 +58,7 @@ export async function startOpencodeServer(
     const { command, spawnOptions } = resolveOpencodeExecutable();
 
     const proc = spawn(command, args, {
+        cwd: cwd || process.cwd(),
         env: process.env,
         stdio: ['ignore', 'pipe', 'pipe'],
         ...spawnOptions,
