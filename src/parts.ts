@@ -40,17 +40,11 @@ export function buildFilePart(
     filePath: string,
     content: string,
     label?: string
-): FilePartInput {
+): TextPartInput {
+    const filename = label ?? path.basename(filePath);
     return {
-        type: 'file',
-        mime: guessMime(filePath),
-        filename: label ?? path.basename(filePath),
-        url: pathToFileUrl(filePath),
-        source: {
-            type: 'file',
-            path: filePath,
-            text: { value: content, start: 0, end: content.length },
-        },
+        type: 'text',
+        text: `Archivo: ${filename}\n\`\`\`\n${content}\n\`\`\``
     };
 }
 
@@ -59,25 +53,13 @@ export function buildSelectionPart(
     content: string,
     startLine: number,
     endLine: number
-): FilePartInput {
+): TextPartInput {
     const lines = content.split(/\r?\n/);
     const snippet = lines.slice(startLine, endLine + 1).join('\n');
+    const filename = `${path.basename(filePath)}:${startLine + 1}-${endLine + 1}`;
     return {
-        type: 'file',
-        mime: guessMime(filePath),
-        filename: `${path.basename(filePath)}:${startLine + 1}-${endLine + 1}`,
-        url: pathToFileUrl(filePath),
-        source: {
-            type: 'symbol',
-            path: filePath,
-            name: path.basename(filePath),
-            kind: 0,
-            range: {
-                start: { line: startLine, character: 0 },
-                end: { line: endLine, character: lines[endLine]?.length ?? 0 },
-            },
-            text: { value: snippet, start: 0, end: snippet.length },
-        },
+        type: 'text',
+        text: `Fragmento: ${filename}\n\`\`\`\n${snippet}\n\`\`\``
     };
 }
 
@@ -112,9 +94,15 @@ export function partsToDisplayText(parts: Part[]): string {
 }
 
 export function contextLabel(part: PromptPart): string {
+    if (part.type === 'file' && part.filename) {
+        return part.filename;
+    }
     if (part.type === 'text') {
+        if (part.text.startsWith('Archivo: ') || part.text.startsWith('Fragmento: ')) {
+            return part.text.split('\n')[0].replace(/^(Archivo|Fragmento): /, '');
+        }
         const preview = part.text.slice(0, 40).replace(/\s+/g, ' ');
         return preview.length < part.text.length ? `${preview}…` : preview;
     }
-    return part.filename ?? part.url;
+    return (part as any).url ?? 'Adjunto';
 }

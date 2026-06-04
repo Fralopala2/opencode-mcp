@@ -288,15 +288,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     exec('git diff', { cwd }, (err, stdout, stderr) => {
                         if (stdout) {
                             this.contextAttachments.addPart({
-                                type: 'file',
-                                mime: 'text/x-patch',
-                                filename: 'git-diff.patch',
-                                url: 'git-diff.patch',
-                                source: {
-                                    type: 'file',
-                                    path: 'git-diff.patch',
-                                    text: { value: stdout, start: 0, end: stdout.length }
-                                }
+                                type: 'text',
+                                text: `Archivo: git-diff.patch\n\`\`\`diff\n${stdout}\n\`\`\``
                             });
                             this.notifyContextChanged();
                         } else {
