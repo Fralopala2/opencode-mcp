@@ -22,19 +22,35 @@
   let selectedModel = '';
   let selectedMode = 'auto'; // agent / auto
   let attachments = [];
-  
+
+
+
   function setStatus(state, detail) {
     if (state === 'busy') {
       showTyping();
       sendBtn.disabled = true;
       inputEl.disabled = true;
+      // Switch send button to abort mode
+      sendBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+      sendBtn.title = "Cancelar (Esc)";
+      sendBtn.onclick = () => { vscode.postMessage({ type: 'abort' }); };
+      sendBtn.disabled = false;
+
     } else {
       hideTyping();
       sendBtn.disabled = false;
       inputEl.disabled = false;
+      // Restore send button to send mode
+      sendBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`;
+      sendBtn.title = "Enviar (Enter)";
+      sendBtn.onclick = sendMessage;
+      sendBtn.disabled = false;
+
       if (state === 'idle') inputEl.focus();
     }
   }
+  
+  
 
   function appendMeta(node, metrics) {
     if (!metrics) return;
@@ -175,7 +191,7 @@
     }
   });
 
-  sendBtn.addEventListener('click', sendMessage);
+  // Initial mode set; actual handler updated via setStatus
 
   function renderAttachments() {
     // Buscar tags de adjuntos en la barra superior o en un div nuevo
@@ -237,6 +253,7 @@
   // Header buttons
   document.querySelector('[title="Nueva sesion"]').addEventListener('click', () => vscode.postMessage({ type: 'newSession' }));
   document.querySelector('[title="Historial"]').addEventListener('click', () => vscode.postMessage({ type: 'reconnect' }));
+  document.querySelector('[title="Configuracion"]').addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
   
   if (attachBtn) {
     attachBtn.addEventListener('click', () => vscode.postMessage({ type: 'attachFile' }));

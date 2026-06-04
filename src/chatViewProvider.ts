@@ -169,6 +169,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     this.post({ type: 'error', message: msg });
                 }
                 break;
+            case 'openSettings':
+                // Open VS Code settings UI
+                void vscode.commands.executeCommand('workbench.action.openSettings');
+                break;
             case 'attachFile':
                 const fileUris = await vscode.window.showOpenDialog({
                     canSelectMany: true,
