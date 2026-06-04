@@ -1,0 +1,182 @@
+{
+  "name": "opencode-mcp-vscode",
+  "displayName": "OpenCode Panel",
+  "description": "Panel lateral de chat conectado a tu OpenCode local (agents, skills, MCP)",
+  "version": "1.0.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "opencode.ask",
+        "title": "OpenCode: Abrir panel de chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "opencode.reconnect",
+        "title": "OpenCode: Reconectar al servidor"
+      },
+      {
+        "command": "opencode.newSession",
+        "title": "OpenCode: Nueva sesión"
+      },
+      {
+        "command": "opencode.addFileToContext",
+        "title": "OpenCode: Añadir archivo actual al contexto"
+      },
+      {
+        "command": "opencode.addSelectionToContext",
+        "title": "OpenCode: Añadir selección al contexto"
+      },
+      {
+        "command": "opencode.addOpenFilesToContext",
+        "title": "OpenCode: Añadir archivos abiertos al contexto"
+      }
+    ],
+    "configuration": {
+      "title": "OpenCode",
+      "properties": {
+        "opencode.serverUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:4096",
+          "description": "URL del servidor OpenCode (opencode serve o TUI en ejecución)."
+        },
+        "opencode.serverPort": {
+          "type": "number",
+          "default": 4096,
+          "description": "Puerto usado al arrancar el servidor automáticamente."
+        },
+        "opencode.serverUsername": {
+          "type": "string",
+          "default": "opencode",
+          "description": "Usuario HTTP Basic Auth (si OPENCODE_SERVER_PASSWORD está definido)."
+        },
+        "opencode.serverPassword": {
+          "type": "string",
+          "default": "",
+          "description": "Contraseña HTTP Basic Auth del servidor OpenCode."
+        },
+        "opencode.autoStartServer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Si no hay servidor, ejecutar `opencode serve` automáticamente."
+        },
+        "opencode.defaultAgent": {
+          "type": "string",
+          "default": "",
+          "description": "Nombre del agente OpenCode por defecto (vacío = config de OpenCode)."
+        },
+        "opencode.autoApprovePermissions": {
+          "type": "boolean",
+          "default": false,
+          "description": "Aprobar automáticamente permisos (bash, edición, etc.)."
+        },
+        "opencode.bin": {
+          "type": "string",
+          "default": "",
+          "description": "Ruta al ejecutable opencode (vacío = auto en Windows/npm). Equivale a OPENCODE_BIN."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "opencode",
+          "title": "OpenCode",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "opencode": [
+        {
+          "type": "webview",
+          "id": "opencode.mcp",
+          "name": "Chat",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "opencode.addSelectionToContext",
+          "group": "navigation@99",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "opencode.addFileToContext",
+          "group": "navigation@99"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "opencode.addFileToContext",
+          "group": "navigation@99",
+          "when": "resourceLangId != ''"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "opencode.ask"
+        },
+        {
+          "command": "opencode.reconnect"
+        },
+        {
+          "command": "opencode.newSession"
+        },
+        {
+          "command": "opencode.addFileToContext"
+        },
+        {
+          "command": "opencode.addSelectionToContext"
+        },
+        {
+          "command": "opencode.addOpenFilesToContext"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "opencode.ask",
+        "key": "ctrl+alt+o",
+        "mac": "cmd+alt+o"
+      },
+      {
+        "command": "opencode.addFileToContext",
+        "key": "ctrl+alt+shift+f",
+        "mac": "cmd+alt+shift+f"
+      },
+      {
+        "command": "opencode.addSelectionToContext",
+        "key": "ctrl+alt+shift+s",
+        "mac": "cmd+alt+shift+s",
+        "when": "editorHasSelection"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^8.60.1",
+    "@typescript-eslint/parser": "^8.60.1",
+    "eslint": "^9.29.0",
+    "typescript": "^5.8.3"
+  }
+}

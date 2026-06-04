@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}} 'unsafe-inline'; script-src 'nonce-{{nonce}}';">
+  <title>OpenCode</title>
+  <style>
+    :root {
+      --oc-gap: 8px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 10px;
+      font-family: var(--vscode-font-family);
+      font-size: var(--vscode-font-size);
+      color: var(--vscode-foreground);
+      background: var(--vscode-sideBar-background);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--oc-gap);
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--vscode-panel-border);
+    }
+    #status {
+      flex: 1;
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+    }
+    #status.connected { color: var(--vscode-testing-iconPassed); }
+    #status.error { color: var(--vscode-errorForeground); }
+    select, button, textarea {
+      font: inherit;
+      color: inherit;
+      background: var(--vscode-input-background);
+      border: 1px solid var(--vscode-input-border);
+      border-radius: 4px;
+    }
+    button {
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+    button:hover { background: var(--vscode-toolbar-hoverBackground); }
+    button.primary {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border-color: transparent;
+    }
+    button.primary:hover { background: var(--vscode-button-hoverBackground); }
+    #agent { min-width: 120px; max-width: 160px; }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 4px 0;
+      margin-bottom: 8px;
+    }
+    .msg {
+      padding: 8px 10px;
+      border-radius: 6px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg.user {
+      background: var(--vscode-input-background);
+      border: 1px solid var(--vscode-input-border);
+      align-self: flex-end;
+      max-width: 95%;
+    }
+    .msg.assistant {
+      background: var(--vscode-editor-background);
+      border: 1px solid var(--vscode-panel-border);
+    }
+    .msg.system {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      font-style: italic;
+    }
+    .msg.error {
+      color: var(--vscode-errorForeground);
+      border: 1px solid var(--vscode-inputValidation-errorBorder);
+    }
+    #context {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 6px;
+      min-height: 18px;
+    }
+    #context:not(:empty)::before {
+      content: "Contexto: ";
+      font-weight: 600;
+    }
+    footer textarea {
+      width: 100%;
+      min-height: 72px;
+      resize: vertical;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+    .actions {
+      display: flex;
+      gap: var(--oc-gap);
+      flex-wrap: wrap;
+    }
+    .toolbar {
+      display: flex;
+      gap: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span id="status">Conectando…</span>
+    <select id="agent" title="Agente OpenCode"></select>
+    <div class="toolbar">
+      <button id="btnReconnect" title="Reconectar">↻</button>
+      <button id="btnNewSession" title="Nueva sesión">+</button>
+    </div>
+  </header>
+  <div id="context"></div>
+  <main id="messages" aria-live="polite"></main>
+  <footer>
+    <textarea id="prompt" placeholder="Escribe tu mensaje… (Ctrl+Enter para enviar)" rows="3"></textarea>
+    <div class="actions">
+      <button class="primary" id="btnSend">Enviar</button>
+      <button id="btnAbort" title="Abortar sesión">Detener</button>
+      <button id="btnClear">Limpiar chat</button>
+    </div>
+  </footer>
+  <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+</body>
+</html>
