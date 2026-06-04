@@ -246,17 +246,42 @@
   }
 
   window.sendQuick = function(text) {
-    inputEl.value = text;
-    sendMessage();
-  }
+    vscode.postMessage({
+      type: 'quickAction',
+      text: text,
+      model: selectedModel
+    });
+  };
+
+  window.addCtxTag = function() {
+    vscode.postMessage({ type: 'addContextFile' });
+  };
 
   // Header buttons
   document.querySelector('[title="Nueva sesion"]').addEventListener('click', () => vscode.postMessage({ type: 'newSession' }));
-  document.querySelector('[title="Historial"]').addEventListener('click', () => vscode.postMessage({ type: 'reconnect' }));
+  document.querySelector('[title="Historial"]').addEventListener('click', () => vscode.postMessage({ type: 'showHistory' }));
   document.querySelector('[title="Configuracion"]').addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
   
   if (attachBtn) {
     attachBtn.addEventListener('click', () => vscode.postMessage({ type: 'attachFile' }));
+  }
+
+  const insertCodeBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Insertar codigo'));
+  const activeFileBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Archivo activo como contexto'));
+  const selectionBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Seleccion del editor'));
+  const gitDiffBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Git diff actual'));
+
+  if (insertCodeBtn) {
+    insertCodeBtn.addEventListener('click', () => vscode.postMessage({ type: 'insertCodeBlock' }));
+  }
+  if (activeFileBtn) {
+    activeFileBtn.addEventListener('click', () => vscode.postMessage({ type: 'addCurrentFileToContext' }));
+  }
+  if (selectionBtn) {
+    selectionBtn.addEventListener('click', () => vscode.postMessage({ type: 'addSelectionToContext' }));
+  }
+  if (gitDiffBtn) {
+    gitDiffBtn.addEventListener('click', () => vscode.postMessage({ type: 'gitDiff' }));
   }
 
   /* dropdown modelo */
@@ -320,6 +345,22 @@
     const msg = event.data;
     switch (msg.type) {
       case 'init':
+        // Clear existing messages
+        const msgs = messagesEl.querySelectorAll('.msg');
+        msgs.forEach(m => m.remove());
+        if (welcomeEl) welcomeEl.style.display = 'block';
+
+        if (msg.messages && msg.messages.length > 0) {
+          if (welcomeEl) welcomeEl.style.display = 'none';
+          msg.messages.forEach(m => {
+            const role = m.role === 'assistant' ? 'ai' : m.role;
+            const node = appendMessage(role, m.text);
+            if (role === 'ai' && m.metrics) {
+              appendMeta(node.querySelector('.msg-body'), m.metrics);
+            }
+          });
+        }
+
         if (msg.models && msg.models.length > 0) {
           let section = dropdown.querySelector('.dropdown-section');
           if (section) {
@@ -465,17 +506,35 @@
         const existingCtx = contextBar.querySelectorAll('.ctx-tag:not(.ctx-att)');
         existingCtx.forEach(el => el.remove());
         
-        (msg.items || []).forEach(item => {
+        (msg.items || []).forEach((item, index) => {
             const tag = document.createElement('div');
             tag.className = 'ctx-tag';
             tag.innerHTML = `
               <svg viewBox="0 0 16 16"><path d="M4 4h8M4 8h6M4 11h4" stroke-linecap="round"/></svg>
               ${item}
+              <span class="ctx-tag-close">
+                <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>
+              </span>
             `;
+            tag.querySelector('.ctx-tag-close').onclick = () => {
+              vscode.postMessage({ type: 'removeContext', index });
+            };
             const addBtn = contextBar.querySelector('.ctx-add');
             if (addBtn) contextBar.insertBefore(tag, addBtn);
             else contextBar.appendChild(tag);
         });
+        break;
+      case 'insertText':
+        if (msg.text) {
+          const start = inputEl.selectionStart;
+          const end = inputEl.selectionEnd;
+          const val = inputEl.value;
+          inputEl.value = val.substring(0, start) + msg.text + val.substring(end);
+          inputEl.focus();
+          inputEl.selectionStart = inputEl.selectionEnd = start + msg.text.length;
+          inputEl.style.height = 'auto';
+          inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+        }
         break;
       case 'fileAttached':
         attachments.push(msg.attachment);

@@ -16,6 +16,12 @@ export class ContextAttachments {
         this.items.push(part);
     }
 
+    removePart(index: number): void {
+        if (index >= 0 && index < this.items.length) {
+            this.items.splice(index, 1);
+        }
+    }
+
     async addCurrentFile(): Promise<boolean> {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {

@@ -3,7 +3,7 @@ import { HttpOpenCodeClient } from './httpClient';
 import { partsToDisplayText, type PromptPart } from './parts';
 import { startOpencodeServer, type ManagedServer } from './serverProcess';
 import { getOpenCodeSettings, getWorkspaceDirectory } from './settings';
-import type { Agent, ServerEvent } from './types';
+import type { Agent, ServerEvent, Session, SessionMessage } from './types';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
@@ -201,6 +201,25 @@ export class OpenCodeService implements vscode.Disposable {
             text: '',
             done: true,
         });
+    }
+
+    async listSessions(): Promise<Session[]> {
+        if (!this.client) {
+            return [];
+        }
+        return this.client.listSessions();
+    }
+
+    async listMessages(sessionId: string): Promise<SessionMessage[]> {
+        if (!this.client) {
+            return [];
+        }
+        return this.client.listMessages(sessionId);
+    }
+
+    async selectSession(sessionId: string): Promise<void> {
+        this.persistSessionId(sessionId);
+        void this.startEventSubscription();
     }
 
     async listAgents(): Promise<Agent[]> {

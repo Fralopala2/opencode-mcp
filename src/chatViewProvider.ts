@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { exec } from 'child_process';
 import { ContextAttachments } from './contextAttachments';
-import { contextLabel } from './parts';
+import { contextLabel, partsToDisplayText } from './parts';
 import { OpenCodeService } from './opencodeService';
-import { getOpenCodeSettings } from './settings';
+import { getOpenCodeSettings, getWorkspaceDirectory } from './settings';
+import { PromptPart } from './types';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'opencode.mcp';
@@ -73,6 +75,22 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             const agents = await this.service.listAgents();
             const models = await this.service.listModels();
             const primary = agents.filter((a) => a.mode === 'primary' || a.mode === 'all');
+            
+            const sessionId = this.service.getSessionId() ?? '';
+            let parsedMessages: any[] = [];
+            if (sessionId) {
+                try {
+                    const messages = await this.service.listMessages(sessionId);
+                    parsedMessages = messages.map(m => ({
+                        role: m.info.role,
+                        text: partsToDisplayText(m.parts),
+                        metrics: m.info.cost
+                    }));
+                } catch {
+                    // Ignore message load error
+                }
+            }
+
             this.post({
                 type: 'init',
                 agents: primary.map((a) => ({
@@ -84,7 +102,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 context: this.contextAttachments
                     .getItems()
                     .map((p) => contextLabel(p)),
-                sessionId: this.service.getSessionId(),
+                sessionId,
+                messages: parsedMessages,
             });
         } catch (error) {
             const msg = error instanceof Error ? error.message : String(error);
@@ -100,13 +119,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         void this.view?.webview.postMessage(payload);
     }
 
-    private async onMessage(message: {
-        type: string;
-        text?: string;
-        agent?: string;
-        model?: string;
-        attachments?: any[];
-    }): Promise<void> {
+    private async onMessage(message: any): Promise<void> {
         switch (message.type) {
             case 'ready':
                 await this.refreshState();
@@ -170,9 +183,131 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 }
                 break;
             case 'openSettings':
-                // Open VS Code settings UI
                 void vscode.commands.executeCommand('workbench.action.openSettings');
                 break;
+            case 'showHistory': {
+                try {
+                    const sessions = await this.service.listSessions();
+                    if (sessions.length === 0) {
+                        vscode.window.showInformationMessage('No hay sesiones anteriores.');
+                        return;
+                    }
+                    const items = sessions.map((s) => ({
+                        label: s.title || `Sesión ${s.id.slice(0, 8)}`,
+                        description: s.id,
+                        session: s,
+                    }));
+                    const selected = await vscode.window.showQuickPick(items, {
+                        placeHolder: 'Selecciona una sesión para cargar',
+                    });
+                    if (selected) {
+                        await this.service.selectSession(selected.session.id);
+                        await this.refreshState();
+                    }
+                } catch (error) {
+                    const msg = error instanceof Error ? error.message : String(error);
+                    vscode.window.showErrorMessage(`Error al listar sesiones: ${msg}`);
+                }
+                break;
+            }
+            case 'addContextFile': {
+                const fileUris = await vscode.window.showOpenDialog({
+                    canSelectMany: true,
+                    openLabel: 'Añadir al contexto',
+                });
+                if (fileUris && fileUris.length > 0) {
+                    for (const uri of fileUris) {
+                        try {
+                            await this.contextAttachments.addFileUri(uri);
+                        } catch (e) {
+                            this.post({ type: 'error', message: `No se pudo añadir al contexto: ${path.basename(uri.fsPath)}` });
+                        }
+                    }
+                    this.notifyContextChanged();
+                }
+                break;
+            }
+            case 'removeContext': {
+                const index = message.index;
+                if (typeof index === 'number') {
+                    this.contextAttachments.removePart(index);
+                    this.notifyContextChanged();
+                }
+                break;
+            }
+            case 'quickAction': {
+                const action = message.text;
+                if (this.contextAttachments.getItems().length === 0) {
+                    await this.contextAttachments.addCurrentFile();
+                    this.notifyContextChanged();
+                }
+                const text = action;
+                const agent = this.selectedAgent || undefined;
+                const model = message.model || undefined;
+                const contextParts = [...this.contextAttachments.getItems()];
+                this.contextAttachments.clear();
+                this.post({ type: 'user', text });
+                this.post({ type: 'status', state: 'busy' });
+                this.post({
+                    type: 'context',
+                    items: [],
+                });
+                try {
+                    await this.service.sendPrompt(text || '', agent, model, contextParts, []);
+                } catch (error) {
+                    const msg = error instanceof Error ? error.message : String(error);
+                    this.post({ type: 'error', message: msg });
+                    this.post({ type: 'status', state: 'idle' });
+                }
+                break;
+            }
+            case 'insertCodeBlock': {
+                const editor = vscode.window.activeTextEditor;
+                if (editor) {
+                    const selection = editor.document.getText(editor.selection);
+                    const formatted = selection ? `\`\`\`\n${selection}\n\`\`\`` : `\`\`\`\n\n\`\`\``;
+                    this.post({ type: 'insertText', text: formatted });
+                } else {
+                    this.post({ type: 'insertText', text: `\`\`\`\n\n\`\`\`` });
+                }
+                break;
+            }
+            case 'addCurrentFileToContext': {
+                await this.contextAttachments.addCurrentFile();
+                this.notifyContextChanged();
+                break;
+            }
+            case 'addSelectionToContext': {
+                await this.contextAttachments.addSelection();
+                this.notifyContextChanged();
+                break;
+            }
+            case 'gitDiff': {
+                const cwd = getWorkspaceDirectory();
+                if (cwd) {
+                    exec('git diff', { cwd }, (err, stdout, stderr) => {
+                        if (stdout) {
+                            this.contextAttachments.addPart({
+                                type: 'file',
+                                mime: 'text/x-patch',
+                                filename: 'git-diff.patch',
+                                url: 'git-diff.patch',
+                                source: {
+                                    type: 'file',
+                                    path: 'git-diff.patch',
+                                    text: { value: stdout, start: 0, end: stdout.length }
+                                }
+                            });
+                            this.notifyContextChanged();
+                        } else {
+                            vscode.window.showInformationMessage('No hay cambios sin confirmar (git diff vacío).');
+                        }
+                    });
+                } else {
+                    vscode.window.showErrorMessage('No hay directorio de espacio de trabajo abierto.');
+                }
+                break;
+            }
             case 'attachFile':
                 const fileUris = await vscode.window.showOpenDialog({
                     canSelectMany: true,

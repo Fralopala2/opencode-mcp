@@ -84,6 +84,10 @@ export class HttpOpenCodeClient {
         return this.request<Agent[]>('GET', '/agent');
     }
 
+    async listSessions(): Promise<Session[]> {
+        return this.request<Session[]>('GET', '/session');
+    }
+
     async listModels(): Promise<{ id: string; name: string }[]> {
         try {
             const data = await this.request<any>('GET', '/provider');
