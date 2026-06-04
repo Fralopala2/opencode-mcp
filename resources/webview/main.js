@@ -5,7 +5,7 @@
   const inputEl    = document.getElementById('chatInput');
   const sendBtn    = document.getElementById('sendBtn');
   const typingEl   = document.getElementById('typing');
-  const welcomeEl  = document.getElementById('welcome');
+  const welcomeEl  = document.getElementById('opencode-welcome');
   const modelBtn   = document.getElementById('modelBtn');
   const modelNameEl = document.getElementById('modelName');
   const dropdown   = document.getElementById('modelDropdown');
@@ -97,8 +97,8 @@
     msgEl.className = 'msg ' + role;
 
     const isSystem = role === 'system' || role === 'error';
-    const displayRole = isSystem ? role : (role === 'ai' ? 'opencode' : 'tu');
-    const avatarTxt = isSystem ? '!' : (role === 'ai' ? 'OC' : 'Tu');
+    const displayRole = isSystem ? role : (role === 'ai' ? 'opencode' : 'tú');
+    const avatarTxt = isSystem ? '!' : (role === 'ai' ? 'OC' : 'Tú');
     
     let bodyHtml = renderBody(text);
     if (role === 'error') {
@@ -258,17 +258,17 @@
   };
 
   // Header buttons
-  document.querySelector('[title="Nueva sesion"]').addEventListener('click', () => vscode.postMessage({ type: 'newSession' }));
+  document.querySelector('[title="Nueva sesión"]').addEventListener('click', () => vscode.postMessage({ type: 'newSession' }));
   document.querySelector('[title="Historial"]').addEventListener('click', () => vscode.postMessage({ type: 'showHistory' }));
-  document.querySelector('[title="Configuracion"]').addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
+  document.querySelector('[title="Configuración"]').addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
   
   if (attachBtn) {
     attachBtn.addEventListener('click', () => vscode.postMessage({ type: 'attachFile' }));
   }
 
-  const insertCodeBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Insertar codigo'));
+  const insertCodeBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Insertar código'));
   const activeFileBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Archivo activo como contexto'));
-  const selectionBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Seleccion del editor'));
+  const selectionBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Selección del editor'));
   const gitDiffBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Git diff actual'));
 
   if (insertCodeBtn) {
