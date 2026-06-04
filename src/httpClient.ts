@@ -84,10 +84,23 @@ export class HttpOpenCodeClient {
         return this.request<Agent[]>('GET', '/agent');
     }
 
-    async listModels(): Promise<string[]> {
+    async listModels(): Promise<{ id: string; name: string }[]> {
         try {
-            const data = await this.request<{ connected?: string[] }>('GET', '/provider');
-            return data.connected || [];
+            const data = await this.request<any>('GET', '/provider');
+            const connected = data.connected || [];
+            const result: { id: string; name: string }[] = [];
+            for (const p of data.all || []) {
+                if (connected.includes(p.id)) {
+                    const modelsArray = p.models ? Object.values(p.models) : [];
+                    for (const m of modelsArray as any[]) {
+                        result.push({
+                            id: `${p.id}::${m.id}`,
+                            name: `${p.name} - ${m.name || m.id}`
+                        });
+                    }
+                }
+            }
+            return result;
         } catch {
             return [];
         }
@@ -95,7 +108,7 @@ export class HttpOpenCodeClient {
 
     async promptAsync(
         sessionId: string,
-        body: { agent?: string; model?: string; parts: PromptPart[] }
+        body: { agent?: string; model?: any; parts: PromptPart[] }
     ): Promise<void> {
         await this.request<void>('POST', `/session/${sessionId}/prompt_async`, body);
     }

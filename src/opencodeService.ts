@@ -213,7 +213,7 @@ export class OpenCodeService implements vscode.Disposable {
         return this.client.listAgents();
     }
 
-    async listModels(): Promise<string[]> {
+    async listModels(): Promise<{ id: string; name: string }[]> {
         if (!this.client) {
             await this.connect();
         }
@@ -245,10 +245,18 @@ export class OpenCodeService implements vscode.Disposable {
 
         this.activeStream.set(sessionId, '');
 
+        let parsedModel: { providerID: string, modelID: string } | undefined;
+        if (model) {
+            const split = model.split('::');
+            if (split.length === 2) {
+                parsedModel = { providerID: split[0], modelID: split[1] };
+            }
+        }
+
         try {
             await this.client.promptAsync(sessionId, {
                 agent: selectedAgent,
-                model: model || undefined,
+                model: parsedModel,
                 parts,
             });
         } catch (error) {
@@ -286,6 +294,7 @@ export class OpenCodeService implements vscode.Disposable {
             this.setStatus('error', `Event stream: ${message}`);
         }
     }
+    private messageRoles: Map<string, string> = new Map();
 
     private async handleEvent(event: ServerEvent): Promise<void> {
         const sessionId = this.sessionId;
@@ -295,12 +304,24 @@ export class OpenCodeService implements vscode.Disposable {
 
         if (event.type === 'message.part.updated') {
             const props = event.properties as {
-                part?: { sessionID?: string; type?: string; text?: string };
+                part?: { sessionID?: string; type?: string; text?: string; messageID?: string };
                 delta?: string;
             } | undefined;
-            if (props?.part?.sessionID !== sessionId) {
+            if (props?.part?.sessionID !== sessionId || !props.part.messageID) {
                 return;
             }
+
+            let role = this.messageRoles.get(props.part.messageID);
+            if (!role) {
+                const messages = await this.client.listMessages(sessionId);
+                messages.forEach(m => this.messageRoles.set(m.info.id, m.info.role));
+                role = this.messageRoles.get(props.part.messageID);
+            }
+
+            if (role !== 'assistant') {
+                return;
+            }
+
             if (props.part.type === 'text' || props.part.type === 'reasoning') {
                 const prev = this.activeStream.get(sessionId) ?? '';
                 const next =
@@ -313,7 +334,7 @@ export class OpenCodeService implements vscode.Disposable {
         }
 
         if (event.type === 'session.idle') {
-            const props = event.properties as { sessionID?: string } | undefined;
+            const props = event.properties as { sessionID?: string; error?: any } | undefined;
             if (props?.sessionID !== sessionId) {
                 return;
             }
@@ -321,16 +342,19 @@ export class OpenCodeService implements vscode.Disposable {
             const lastAssistant = [...messages]
                 .reverse()
                 .find((m) => m.info.role === 'assistant');
+            
             const text = lastAssistant
                 ? partsToDisplayText(lastAssistant.parts)
-                : this.activeStream.get(sessionId) ?? '';
+                : '';
+                
             this.activeStream.delete(sessionId);
-            this.emitStream({ 
-                sessionId, 
-                text, 
-                done: true,
-                metrics: lastAssistant?.info.cost 
-            });
+            
+            if (props?.error) {
+                const errMsg = props.error?.data?.message || props.error?.name || 'Error del agente';
+                this.emitStream({ sessionId, text: '', done: true, error: errMsg });
+            } else {
+                this.emitStream({ sessionId, text, done: true, metrics: lastAssistant?.info?.cost });
+            }
         }
 
         if (event.type === 'permission.updated') {

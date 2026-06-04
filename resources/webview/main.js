@@ -254,30 +254,19 @@
     dropOverlay.classList.remove('open');
   });
 
-  function populateModels(models) {
-      if (!models || models.length === 0) return;
-      const section = dropdown.querySelector('.dropdown-section');
-      section.innerHTML = '<div class="dropdown-label">Modelo</div>';
-      models.forEach(model => {
-          const item = document.createElement('div');
-          item.className = 'dropdown-item';
-          if (model === selectedModel) item.classList.add('active');
-          item.dataset.model = model;
-          item.innerHTML = `<span class="dropdown-check">${model === selectedModel ? '✓' : ''}</span>${model}`;
-          
-          item.addEventListener('click', () => {
-            selectedModel = model;
-            modelNameEl.textContent = selectedModel;
-            dropdown.querySelectorAll('[data-model]').forEach(i => i.querySelector('.dropdown-check').textContent = '');
-            item.querySelector('.dropdown-check').textContent = '✓';
-            dropdown.classList.remove('open');
-            dropOverlay.classList.remove('open');
-          });
-          
-          section.appendChild(item);
-      });
-  }
+  dropdown.addEventListener('click', e => {
+    const item = e.target.closest('.dropdown-item');
+    if (!item) return;
 
+    if (item.hasAttribute('data-value')) {
+      selectedModel = item.dataset.value;
+      modelNameEl.textContent = item.dataset.name;
+      dropdown.querySelectorAll('[data-value]').forEach(i => i.querySelector('.dropdown-check').textContent = '');
+      item.querySelector('.dropdown-check').textContent = '✓';
+      dropdown.classList.remove('open');
+      dropOverlay.classList.remove('open');
+    }
+  });
   dropdown.querySelectorAll('[data-mode]').forEach(item => {
     item.addEventListener('click', () => {
       selectedMode = item.dataset.mode;
@@ -314,12 +303,120 @@
     const msg = event.data;
     switch (msg.type) {
       case 'init':
-        if (msg.models) {
-            if (!selectedModel && msg.models.length > 0) {
-                selectedModel = msg.models.includes('claude-sonnet-4') ? 'claude-sonnet-4' : msg.models[0];
+        if (msg.models && msg.models.length > 0) {
+          let section = dropdown.querySelector('.dropdown-section');
+          if (section) {
+            section.innerHTML = '<div class="dropdown-label">Modelo</div>';
+          } else {
+            section = document.createElement('div');
+            section.className = 'dropdown-section';
+            section.innerHTML = '<div class="dropdown-label">Modelo</div>';
+            dropdown.insertBefore(section, dropdown.firstChild);
+          }
+          
+          // Group models by provider
+          const providers = {};
+          msg.models.forEach(model => {
+            const mId = typeof model === 'string' ? model : model.id;
+            const mName = typeof model === 'string' ? model : model.name;
+            
+            let providerId = 'otros';
+            let providerName = 'Otros';
+            let modelDisplayName = mName;
+            
+            if (mId.includes('::')) {
+              const parts = mId.split('::');
+              providerId = parts[0];
+              const nameParts = mName.split(' - ');
+              if (nameParts.length > 1) {
+                providerName = nameParts[0];
+                modelDisplayName = nameParts.slice(1).join(' - ');
+              } else {
+                providerName = providerId;
+              }
             }
-            populateModels(msg.models);
-            modelNameEl.textContent = selectedModel;
+            
+            if (!providers[providerId]) {
+              providers[providerId] = {
+                id: providerId,
+                name: providerName,
+                models: []
+              };
+            }
+            providers[providerId].models.push({
+              id: mId,
+              name: modelDisplayName,
+              fullName: mName
+            });
+          });
+
+          const modelsList = document.createElement('div');
+          modelsList.className = 'dropdown-models-list';
+          
+          Object.values(providers).forEach(prov => {
+            const group = document.createElement('div');
+            group.className = 'provider-group';
+            
+            const hasSelected = prov.models.some(m => m.id === selectedModel);
+            if (hasSelected) {
+              group.classList.add('open');
+            }
+            
+            const header = document.createElement('div');
+            header.className = 'provider-header';
+            header.innerHTML = `
+              <span class="provider-name">${escHtml(prov.name)}</span>
+              <span class="provider-arrow">${hasSelected ? '▾' : '▸'}</span>
+            `;
+            
+            const modelsContainer = document.createElement('div');
+            modelsContainer.className = 'provider-models';
+            
+            prov.models.forEach(m => {
+              const item = document.createElement('div');
+              item.className = 'dropdown-item';
+              item.dataset.value = m.id;
+              item.dataset.name = m.fullName;
+              item.innerHTML = `
+                <div class="dropdown-check">${selectedModel === m.id ? '✓' : ''}</div>
+                <div style="flex:1;">${escHtml(m.name)}</div>
+              `;
+              modelsContainer.appendChild(item);
+            });
+            
+            header.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const isOpen = group.classList.contains('open');
+              modelsList.querySelectorAll('.provider-group').forEach(g => {
+                g.classList.remove('open');
+                const arrow = g.querySelector('.provider-arrow');
+                if (arrow) arrow.textContent = '▸';
+              });
+              
+              if (!isOpen) {
+                group.classList.add('open');
+                const arrow = header.querySelector('.provider-arrow');
+                if (arrow) arrow.textContent = '▾';
+              }
+            });
+            
+            group.appendChild(header);
+            group.appendChild(modelsContainer);
+            modelsList.appendChild(group);
+          });
+          
+          section.appendChild(modelsList);
+
+          if (!selectedModel) {
+            const first = msg.models[0];
+            selectedModel = typeof first === 'string' ? first : first.id;
+            modelNameEl.textContent = typeof first === 'string' ? first : first.name;
+          } else {
+            const selectedObj = msg.models.find(m => (typeof m === 'string' ? m : m.id) === selectedModel);
+            if (selectedObj) {
+              modelNameEl.textContent = typeof selectedObj === 'string' ? selectedObj : selectedObj.name;
+            }
+          }
         }
         break;
       case 'connection':
