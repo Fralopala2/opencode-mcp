@@ -57,7 +57,7 @@
     const meta = document.createElement('div');
     meta.className = 'msg-meta';
     meta.style.fontSize = '10px';
-    meta.style.color = 'var(--text-muted)';
+    meta.style.color = 'var(--text-sec)';
     meta.style.marginTop = '6px';
     meta.style.textAlign = 'right';
     meta.textContent = `Tokens - In: ${metrics.input || 0} | Out: ${metrics.output || 0}`;

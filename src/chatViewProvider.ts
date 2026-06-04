@@ -84,7 +84,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     parsedMessages = messages.map(m => ({
                         role: m.info.role,
                         text: partsToDisplayText(m.parts),
-                        metrics: m.info.cost
+                        metrics: m.info.tokens
                     }));
                 } catch {
                     // Ignore message load error

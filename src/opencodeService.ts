@@ -372,7 +372,7 @@ export class OpenCodeService implements vscode.Disposable {
                 const errMsg = props.error?.data?.message || props.error?.name || 'Error del agente';
                 this.emitStream({ sessionId, text: '', done: true, error: errMsg });
             } else {
-                this.emitStream({ sessionId, text, done: true, metrics: lastAssistant?.info?.cost });
+                this.emitStream({ sessionId, text, done: true, metrics: lastAssistant?.info?.tokens });
             }
         }
 

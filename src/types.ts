@@ -13,7 +13,8 @@ export interface Session {
 export interface MessageInfo {
     role: string;
     id: string;
-    cost?: {
+    cost?: number;
+    tokens?: {
         input: number;
         output: number;
     };
