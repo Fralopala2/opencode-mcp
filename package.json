@@ -11,7 +11,7 @@
     "Other",
     "Machine Learning"
   ],
-  "icon": "resources/logo.png",
+  "icon": "resources/logo.svg",
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
