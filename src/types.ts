@@ -18,6 +18,15 @@ export interface MessageInfo {
         input: number;
         output: number;
     };
+    error?: {
+        name?: string;
+        message?: string;
+        data?: {
+            message?: string;
+            detail?: string;
+            responseBody?: string;
+        };
+    };
 }
 
 export type TextPartInput = {

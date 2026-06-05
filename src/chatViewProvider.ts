@@ -81,11 +81,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             if (sessionId) {
                 try {
                     const messages = await this.service.listMessages(sessionId);
-                    parsedMessages = messages.map(m => ({
-                        role: m.info.role,
-                        text: partsToDisplayText(m.parts),
-                        metrics: m.info.tokens
-                    }));
+                    parsedMessages = messages.map(m => {
+                        const hasError = !!m.info.error;
+                        return {
+                            role: hasError ? 'error' : m.info.role,
+                            text: hasError
+                                ? (m.info.error?.data?.message || m.info.error?.message || m.info.error?.name || 'Error del proveedor')
+                                : partsToDisplayText(m.parts),
+                            metrics: m.info.tokens
+                        };
+                    });
                 } catch {
                     // Ignore message load error
                 }

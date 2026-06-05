@@ -371,6 +371,10 @@ export class OpenCodeService implements vscode.Disposable {
             if (props?.error) {
                 const errMsg = props.error?.data?.message || props.error?.name || 'Error del agente';
                 this.emitStream({ sessionId, text: '', done: true, error: errMsg });
+            } else if (lastAssistant?.info?.error) {
+                const errorObj = lastAssistant.info.error;
+                const errMsg = errorObj.data?.message || errorObj.message || errorObj.name || 'Error del proveedor';
+                this.emitStream({ sessionId, text: '', done: true, error: errMsg });
             } else {
                 this.emitStream({ sessionId, text, done: true, metrics: lastAssistant?.info?.tokens });
             }
