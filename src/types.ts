@@ -47,6 +47,7 @@ export type PromptPart = TextPartInput | FilePartInput;
 export type Part =
     | { type: 'text'; text: string }
     | { type: 'reasoning'; text: string }
+    | { type: 'call'; tool?: string; args?: unknown }
     | {
           type: 'tool';
           tool: string;

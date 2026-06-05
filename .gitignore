@@ -1,5 +1,25 @@
-out
-dist
-node_modules
-.vscode-test/
+# Ignore IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Ignore environment files
+.env
+.env.local
+
+# Ignore build and dependency directories
+node_modules/
+dist/
+build/
+out/
+
+# Ignore compiled extensions
 *.vsix
+
+# Ignore temporary files
+*.tmp
+*.log
+
+# Ignore plan de ruta temporal
+plan_ruta_api_balancer.md

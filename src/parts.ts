@@ -86,6 +86,10 @@ export function partsToDisplayText(parts: Part[]): string {
                 }
                 break;
             }
+            case 'call': {
+                chunks.push(`⚙️ *Llamando a herramienta:* \`${part.tool || 'desconocida'}\``);
+                break;
+            }
             default:
                 break;
         }

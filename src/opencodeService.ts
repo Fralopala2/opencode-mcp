@@ -28,6 +28,32 @@ export class OpenCodeService implements vscode.Disposable {
         (state: ConnectionState, detail?: string) => void
     >();
     private activeStream = new Map<string, string>();
+    private sessionTimeout: NodeJS.Timeout | undefined;
+    private readonly TIMEOUT_MS = 3 * 60 * 1000; // 3 minutos
+
+    private resetTimeout(sessionId: string): void {
+        this.clearTimeout();
+        this.sessionTimeout = setTimeout(() => {
+            void this.handleTimeout(sessionId);
+        }, this.TIMEOUT_MS);
+    }
+
+    private clearTimeout(): void {
+        if (this.sessionTimeout) {
+            clearTimeout(this.sessionTimeout);
+            this.sessionTimeout = undefined;
+        }
+    }
+
+    private async handleTimeout(sessionId: string): Promise<void> {
+        await this.abortSession(true);
+        this.emitStream({
+            sessionId,
+            text: '',
+            done: true,
+            error: 'La petición tardó demasiado y fue cancelada automáticamente (timeout de 3m).'
+        });
+    }
 
     onStream(listener: (update: StreamUpdate) => void): vscode.Disposable {
         this.streamListeners.add(listener);
@@ -137,6 +163,7 @@ export class OpenCodeService implements vscode.Disposable {
     }
 
     async disconnect(): Promise<void> {
+        this.clearTimeout();
         this.eventAbort?.abort();
         this.eventAbort = undefined;
         this.managedServer?.close();
@@ -201,17 +228,20 @@ export class OpenCodeService implements vscode.Disposable {
         return created.id;
     }
 
-    async abortSession(): Promise<void> {
+    async abortSession(silent: boolean = false): Promise<void> {
+        this.clearTimeout();
         if (!this.client || !this.sessionId) {
             return;
         }
         await this.client.abortSession(this.sessionId);
         this.activeStream.delete(this.sessionId);
-        this.emitStream({
-            sessionId: this.sessionId,
-            text: '',
-            done: true,
-        });
+        if (!silent) {
+            this.emitStream({
+                sessionId: this.sessionId,
+                text: '',
+                done: true,
+            });
+        }
     }
 
     async listSessions(): Promise<Session[]> {
@@ -284,12 +314,14 @@ export class OpenCodeService implements vscode.Disposable {
         }
 
         try {
+            this.resetTimeout(sessionId);
             await this.client.promptAsync(sessionId, {
                 agent: selectedAgent,
                 model: parsedModel,
                 parts,
             });
         } catch (error) {
+            this.clearTimeout();
             const message = error instanceof Error ? error.message : String(error);
             this.emitStream({
                 sessionId,
@@ -324,31 +356,20 @@ export class OpenCodeService implements vscode.Disposable {
             this.setStatus('error', `Event stream: ${message}`);
         }
     }
-    private messageRoles: Map<string, string> = new Map();
-
     private async handleEvent(event: ServerEvent): Promise<void> {
         const sessionId = this.sessionId;
         if (!sessionId || !this.client) {
             return;
         }
 
+        this.resetTimeout(sessionId);
+
         if (event.type === 'message.part.updated') {
             const props = event.properties as {
-                part?: { sessionID?: string; type?: string; text?: string; messageID?: string };
+                part?: { sessionID?: string; type?: string; text?: string; messageID?: string; tool?: string; state?: any };
                 delta?: string;
             } | undefined;
             if (props?.part?.sessionID !== sessionId || !props.part.messageID) {
-                return;
-            }
-
-            let role = this.messageRoles.get(props.part.messageID);
-            if (!role) {
-                const messages = await this.client.listMessages(sessionId);
-                messages.forEach(m => this.messageRoles.set(m.info.id, m.info.role));
-                role = this.messageRoles.get(props.part.messageID);
-            }
-
-            if (role !== 'assistant') {
                 return;
             }
 
@@ -360,6 +381,25 @@ export class OpenCodeService implements vscode.Disposable {
                         : (props.part.text ?? prev);
                 this.activeStream.set(sessionId, next);
                 this.emitStream({ sessionId, text: next, done: false });
+            } else if (props.part.type === 'call') {
+                const toolName = props.part.tool || 'herramienta';
+                const prev = this.activeStream.get(sessionId) ?? '';
+                const indicator = `\n> ⚙️ Ejecutando: \`${toolName}\`...\n`;
+                if (!prev.includes(indicator)) {
+                    const next = prev + indicator;
+                    this.activeStream.set(sessionId, next);
+                    this.emitStream({ sessionId, text: next, done: false });
+                }
+            } else if (props.part.type === 'tool') {
+                const toolName = props.part.tool || 'herramienta';
+                const prev = this.activeStream.get(sessionId) ?? '';
+                const status = props.part.state?.status === 'error' ? '❌ Error en' : '✅ Completado:';
+                const indicator = `\n> ${status} \`${toolName}\`\n`;
+                if (!prev.includes(indicator)) {
+                    const next = prev + indicator;
+                    this.activeStream.set(sessionId, next);
+                    this.emitStream({ sessionId, text: next, done: false });
+                }
             }
         }
 
@@ -377,6 +417,7 @@ export class OpenCodeService implements vscode.Disposable {
                 ? partsToDisplayText(lastAssistant.parts)
                 : '';
                 
+            this.clearTimeout();
             this.activeStream.delete(sessionId);
             
             if (props?.error) {
