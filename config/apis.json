@@ -1,16 +1,6 @@
 {
-  "providers": {
-    "openai": [
-      {
-        "id": "api1",
-        "endpoint": "http://localhost:3002/mock-api-1",
-        "api_key": "mock-key-1"
-      },
-      {
-        "id": "api2",
-        "endpoint": "http://localhost:3002/mock-api-2",
-        "api_key": "mock-key-2"
-      }
-    ]
-  }
+  "openai": [
+    "mock-key-1",
+    "mock-key-2"
+  ]
 }

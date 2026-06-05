@@ -1,41 +1,73 @@
 const fs = require('fs');
 const axios = require('axios');
 const { exec } = require('child_process');
+const util = require('util');
+const execPromise = util.promisify(exec);
 
 class FailoverAgent {
-  constructor() {
+  constructor(env = 'prod') {
     this.config = JSON.parse(fs.readFileSync('config/apis.json'));
+    // Si es prod usa OpenCode local, si es test usa el mock
+    this.opencodeEndpoint = env === 'test' ? 'http://localhost:3002/mock-api' : 'http://127.0.0.1:4096/v1/chat/completions';
   }
 
   async callAPI(providerName, requestData) {
-    const providerList = this.config.providers[providerName];
+    const keys = this.config[providerName] || [];
     let currentIndex = 0;
 
-    while (currentIndex < providerList.length) {
-      const api = providerList[currentIndex];
+    // Intentamos hasta quedarnos sin keys de respaldo
+    while (currentIndex < keys.length) {
       try {
-        console.log(`Intentando con ${api.id} (${api.endpoint})...`);
+        console.log(`[FailoverAgent] Enviando petición a OpenCode local... (Intento ${currentIndex + 1})`);
+        
+        // Petición a OpenCode local (o al mock). OpenCode se encarga de hablar con OpenAI/Mistral.
         const response = await axios({
-          method: 'GET',
-          url: api.endpoint,
-          headers: { Authorization: `Bearer ${api.api_key}` },
-          data: requestData
+          method: 'POST',
+          url: this.opencodeEndpoint,
+          data: requestData,
+          timeout: 10000
         });
-        console.log(`Éxito con ${api.id}!`);
+        
+        console.log(`[FailoverAgent] ¡Éxito! OpenCode procesó la petición.`);
         return response.data;
+
       } catch (error) {
-        console.error(`Error con ${api.id}:`, error.response?.data || error.message);
-        if (currentIndex < providerList.length - 1) {
-          const nextApi = providerList[currentIndex + 1];
-          console.log(`Cambiaré a ${nextApi.id}...`);
-          // Ejecutar comando /connect en OpenCode
-          exec(`opencode /connect ${providerName} --api ${nextApi.id}`, (err) => {
-            if (err) console.error("Error al ejecutar /connect:", err);
-          });
+        console.error(`[FailoverAgent] OpenCode devolvió un error:`, error.response?.data || error.message);
+        
+        const isRateLimit = error.response?.status === 429;
+        const isServerError = error.response?.status >= 500;
+        const isTimeout = error.code === 'ECONNABORTED';
+
+        // Si OpenCode falló porque la API original falló (429, 500) o hubo timeout
+        if (isRateLimit || isServerError || isTimeout) {
+          currentIndex++;
+          
+          if (currentIndex < keys.length) {
+            const nextApiKey = keys[currentIndex];
+            const modelName = requestData?.model; // Extraemos el modelo de la petición original
+            console.log(`[FailoverAgent] Cambiando OpenCode a la siguiente key de ${providerName}...`);
+            
+            try {
+              // Actualizamos la key en el OpenCode local y aseguramos que use el mismo modelo
+              let cmd = `opencode /connect ${providerName} --key ${nextApiKey}`;
+              if (modelName) {
+                cmd += ` --model ${modelName}`;
+              }
+              
+              await execPromise(cmd);
+              console.log(`[FailoverAgent] Key (y modelo) actualizados en OpenCode. Reintentando...`);
+              // Esperar un poco para que OpenCode asimile la nueva key si es necesario
+              await new Promise(r => setTimeout(r, 1000));
+            } catch (err) {
+              console.error("[FailoverAgent] Error al ejecutar /connect en OpenCode:", err.message);
+            }
+          } else {
+            throw new Error(`Todas las keys de backup para ${providerName} han fallado.`);
+          }
         } else {
-          throw new Error("Todas las APIs fallaron");
+          // Error no recuperable
+          throw error;
         }
-        currentIndex++;
       }
     }
   }

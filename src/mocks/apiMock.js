@@ -1,14 +1,17 @@
 const express = require('express');
 const app = express();
 
-// Mock de API 1 (fallará con 429)
-app.get('/mock-api-1', (req, res) => {
-  res.status(429).json({ error: "Límite de tokens alcanzado" });
-});
+let attempts = 0;
 
-// Mock de API 2 (éxito)
-app.get('/mock-api-2', (req, res) => {
-  res.json({ data: "Respuesta exitosa de API 2" });
+app.post('/mock-api', (req, res) => {
+  attempts++;
+  if (attempts === 1) {
+    // Simulamos que OpenCode devuelve el 429 del proveedor original
+    res.status(429).json({ error: "Límite de tokens alcanzado" });
+  } else {
+    // Al segundo intento (después del /connect), simulamos éxito
+    res.json({ data: "Respuesta exitosa de OpenCode con la nueva key" });
+  }
 });
 
 app.listen(3002, () => {
