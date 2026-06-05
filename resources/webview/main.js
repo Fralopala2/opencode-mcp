@@ -30,21 +30,23 @@
       showTyping();
       sendBtn.disabled = true;
       inputEl.disabled = true;
-      // Switch send button to abort mode
-      sendBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
-      sendBtn.title = "Cancelar (Esc)";
-      sendBtn.onclick = () => { vscode.postMessage({ type: 'abort' }); };
-      sendBtn.disabled = false;
+       // Switch send button to abort mode
+       sendBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+       sendBtn.title = "Cancelar (Esc)";
+       sendBtn.classList.add('abort');
+       sendBtn.onclick = () => { vscode.postMessage({ type: 'abort' }); };
+       sendBtn.disabled = false;
 
     } else {
       hideTyping();
       sendBtn.disabled = false;
       inputEl.disabled = false;
-      // Restore send button to send mode
-      sendBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`;
-      sendBtn.title = "Enviar (Enter)";
-      sendBtn.onclick = sendMessage;
-      sendBtn.disabled = false;
+       // Restore send button to send mode
+       sendBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`;
+       sendBtn.title = "Enviar (Enter)";
+       sendBtn.classList.remove('abort');
+       sendBtn.onclick = sendMessage;
+       sendBtn.disabled = false;
 
       if (state === 'idle') inputEl.focus();
     }
@@ -284,9 +286,14 @@
   const selectionBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Selección del editor'));
   const gitDiffBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Git diff actual'));
 
-  if (insertCodeBtn) {
-    insertCodeBtn.addEventListener('click', () => vscode.postMessage({ type: 'insertCodeBlock' }));
-  }
+   const attachFolderBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Adjuntar carpeta'));
+   if (attachFolderBtn) {
+     attachFolderBtn.addEventListener('click', () => vscode.postMessage({ type: 'attachFolder' }));
+   }
+   
+   if (insertCodeBtn) {
+     insertCodeBtn.addEventListener('click', () => vscode.postMessage({ type: 'insertCodeBlock' }));
+   }
   if (activeFileBtn) {
     activeFileBtn.addEventListener('click', () => vscode.postMessage({ type: 'addCurrentFileToContext' }));
   }

@@ -707,6 +707,12 @@
   }
 
   .input-send:hover { background: #5cbf60; }
+  .input-send.abort {
+    background: #ff5f57;
+  }
+  .input-send.abort:hover {
+    background: #e0443e;
+  }
   .input-send:disabled { opacity: 0.3; cursor: not-allowed; }
 
   .input-send svg {
@@ -919,12 +925,15 @@
     </button>
   </div>
   <div class="input-toolbar">
-    <button class="tool-btn" title="Adjuntar archivo">
-      <svg viewBox="0 0 24 24"><path d="M21.44 11.05L12.25 20.24a6 6 0 01-8.49-8.49l9.2-9.19a4 4 0 015.66 5.65L9.41 17.41a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-    </button>
-    <button class="tool-btn" title="Insertar código">
-      <svg viewBox="0 0 24 24"><path d="M9 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2h-2M9 3a2 2 0 002 2h2a2 2 0 002-2M9 3a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-    </button>
+     <button class="tool-btn" title="Adjuntar archivo">
+       <svg viewBox="0 0 24 24"><path d="M21.44 11.05L12.25 20.24a6 6 0 01-8.49-8.49l9.2-9.19a4 4 0 015.66 5.65L9.41 17.41a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+     </button>
+     <button class="tool-btn" title="Adjuntar carpeta">
+       <svg viewBox="0 0 24 24"><path d="M3 10h18v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8zm4-6h2v3H7V4zm4 0h2v3h-2V4zm4 0h2v3h-2V4z"/></svg>
+     </button>
+     <button class="tool-btn" title="Insertar código">
+       <svg viewBox="0 0 24 24"><path d="M9 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2h-2M9 3a2 2 0 002 2h2a2 2 0 002-2M9 3a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+     </button>
     <button class="tool-btn" title="Archivo activo como contexto">
       <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
     </button>

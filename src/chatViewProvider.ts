@@ -319,7 +319,27 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 }
                 break;
             }
-            case 'attachFile':
+             case 'attachFolder':
+                 const folderUri = await vscode.window.showOpenDialog({
+                     canSelectFiles: false,
+                     canSelectFolders: true,
+                     canSelectMany: false,
+                     openLabel: 'Adjuntar Carpeta',
+                 });
+                 if (folderUri && folderUri.length > 0) {
+                     const folderPath = folderUri[0].fsPath;
+                     this.contextAttachments.addPart({
+                         type: 'text',
+                         text: `Carpeta adjunta: ${folderPath}`,
+                     });
+                     this.notifyContextChanged();
+                     this.post({
+                         type: 'system',
+                         text: `Carpeta adjunta al contexto: ${folderPath}`,
+                     });
+                 }
+                 break;
+             case 'attachFile':
                 const fileUris = await vscode.window.showOpenDialog({
                     canSelectMany: true,
                     openLabel: 'Adjuntar',
