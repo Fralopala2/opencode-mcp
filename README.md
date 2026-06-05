@@ -129,6 +129,13 @@ Para contribuir al desarrollo de la extensión:
 
 - **`package.json`**: Configuración del proyecto y dependencias.
 
+## Solución de problemas
+
+- **OpenCode no responde:** Verifica que `opencode.autoStartServer` esté activo o ejecuta `opencode serve`.
+- **Error de conexión (Timeout):** Asegúrate de que el puerto de `opencode.serverPort` esté libre.
+- **Error de autenticación:** Ingresa la contraseña en `opencode.serverPassword` si tu servidor la requiere.
+- **Bloqueo por permisos:** Activa `opencode.autoApprovePermissions` o aprueba manualmente si el chat se cuelga.
+
 ## Licencia
 
 MIT

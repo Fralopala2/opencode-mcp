@@ -6,6 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-06-05
+
+- Refactor de `opencode-adapter.mjs` para usar HTTP API nativa.
+- Creado subagente `@opencode-local` para integración con Antigravity.
+- Añadida sección de Solución de problemas en `README.md`.
+
 ## [1.0.0] - 2026-06-04
 
 - Panel lateral de chat conectado a OpenCode local (HTTP API)
