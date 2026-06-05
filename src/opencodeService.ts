@@ -62,7 +62,8 @@ export class OpenCodeService implements vscode.Disposable {
     }
 
     private workspaceKey(): string {
-        return getWorkspaceDirectory() ?? 'global';
+        const dir = getWorkspaceDirectory();
+        return dir ? dir.toLowerCase() : 'global';
     }
 
     persistSelectedModel(model: string): void {
