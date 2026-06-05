@@ -104,6 +104,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 })),
                 models,
                 selectedAgent: this.selectedAgent,
+                selectedModel: this.service.getSelectedModel(),
                 context: this.contextAttachments
                     .getItems()
                     .map((p) => contextLabel(p)),
@@ -157,6 +158,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             case 'setAgent':
                 this.selectedAgent = message.agent ?? '';
                 break;
+            case 'setModel':
+                this.service.persistSelectedModel(message.model ?? '');
+                break;
             case 'reconnect':
                 this.post({ type: 'status', state: 'connecting' });
                 try {
@@ -172,6 +176,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     await this.service.newSession();
                     await this.refreshState();
                     this.post({ type: 'system', text: 'Nueva sesión creada.' });
+                } catch (error) {
+                    const msg = error instanceof Error ? error.message : String(error);
+                    this.post({ type: 'error', message: msg });
+                }
+                break;
+            case 'clearChat':
+                try {
+                    await this.service.newSession();
+                    await this.refreshState();
                 } catch (error) {
                     const msg = error instanceof Error ? error.message : String(error);
                     this.post({ type: 'error', message: msg });

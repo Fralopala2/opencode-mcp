@@ -137,6 +137,16 @@
     return msgEl;
   }
 
+  function clearChat() {
+    // Eliminar todos los mensajes del DOM
+    const msgs = messagesEl.querySelectorAll('.msg');
+    msgs.forEach(m => m.remove());
+    // Mostrar la pantalla de bienvenida
+    if (welcomeEl) welcomeEl.style.display = 'block';
+    // Enviar mensaje al backend para crear nueva sesión (limpiar historial)
+    vscode.postMessage({ type: 'clearChat' });
+  }
+
   function updateStream(text) {
     if (!streamingNode) {
       streamingNode = appendMessage('ai', text);
@@ -258,6 +268,9 @@
   };
 
   // Header buttons
+  document.getElementById('clearChatBtn').addEventListener('click', () => {
+    clearChat();
+  });
   document.querySelector('[title="Nueva sesión"]').addEventListener('click', () => vscode.postMessage({ type: 'newSession' }));
   document.querySelector('[title="Historial"]').addEventListener('click', () => vscode.postMessage({ type: 'showHistory' }));
   document.querySelector('[title="Configuración"]').addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
@@ -307,6 +320,8 @@
       item.querySelector('.dropdown-check').textContent = '✓';
       dropdown.classList.remove('open');
       dropOverlay.classList.remove('open');
+      // Persist selected model
+      vscode.postMessage({ type: 'setModel', model: selectedModel });
     }
   });
   dropdown.querySelectorAll('[data-mode]').forEach(item => {
@@ -464,6 +479,17 @@
           });
           
           section.appendChild(modelsList);
+
+          if (msg.selectedModel) {
+            selectedModel = msg.selectedModel;
+            // Find the model name from the list
+            const foundModel = msg.models.find(m => (typeof m === 'string' ? m : m.id) === selectedModel);
+            if (foundModel) {
+              modelNameEl.textContent = typeof foundModel === 'string' ? foundModel : foundModel.name;
+            } else {
+              selectedModel = '';
+            }
+          }
 
           if (!selectedModel) {
             const first = msg.models[0];
