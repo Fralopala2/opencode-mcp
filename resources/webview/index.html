@@ -67,17 +67,15 @@
   .logo-icon {
     width: 18px;
     height: 18px;
-    background: var(--accent);
-    border-radius: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .logo-icon svg {
-    width: 11px;
-    height: 11px;
-    fill: #0d0d0d;
+  .logo-icon img {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
   }
 
   .logo-text {
@@ -402,24 +400,17 @@
   }
 
   .opencode-welcome-icon {
-    width: 36px;
-    height: 36px;
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
+    width: 48px;
+    height: 48px;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
   }
 
-  .opencode-welcome-icon svg {
-    width: 18px;
-    height: 18px;
-    fill: none;
-    stroke: var(--accent);
-    stroke-width: 1.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  .opencode-welcome-icon img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
   }
 
   .opencode-welcome h2 {
@@ -801,7 +792,7 @@
   <div class="topbar-left">
     <div class="logo">
       <div class="logo-icon">
-        <svg viewBox="0 0 12 12"><path d="M2 10 L6 2 L10 10 M3.5 7 L8.5 7"/></svg>
+        <img src="{{logoUri}}" alt="opencode" />
       </div>
       <span class="logo-text">opencode</span>
     </div>
@@ -879,7 +870,7 @@
 
   <div class="opencode-welcome" id="opencode-welcome">
     <div class="opencode-welcome-icon">
-      <svg viewBox="0 0 24 24"><path d="M12 2L15.5 9H22L16.5 13.5L18.5 21L12 17L5.5 21L7.5 13.5L2 9H8.5L12 2Z"/></svg>
+      <img src="{{logoUri}}" alt="opencode" />
     </div>
     <h2>OpenCode listo</h2>
     <p>Haz una pregunta, genera código o abre un archivo como contexto.</p>
