@@ -6,8 +6,6 @@
 
 Extensión de VS Code / Antigravity (+ todos los IDE que soporten instalacion via .vsix) que integra un **panel lateral de chat** con tu instancia local de **OpenCode**, permitiendo interactuar con tus **agents**, **skills**, **MCP** y **providers** configurados en `~/.config/opencode/opencode.jsonc`.
 
-Inspirada en [OpenCode UX+](https://marketplace.visualstudio.com/items?itemName=paviko.opencode-ux-plus), pero sin incluir un binario adicional. Utiliza directamente la CLI `opencode` disponible en tu `PATH`.
-
 ## Características
 
 - **Conexión directa** con tu servidor local de OpenCode.
