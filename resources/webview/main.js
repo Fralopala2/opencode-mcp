@@ -381,12 +381,28 @@
   }
 
   // Header buttons
-  const exportChatBtn = document.getElementById('exportChatBtn');
-  if (exportChatBtn) {
-    exportChatBtn.addEventListener('click', () => {
-      vscode.postMessage({ type: 'exportChat' });
-    });
-  }
+   const exportChatBtn = document.getElementById('exportChatBtn');
+   if (exportChatBtn) {
+     exportChatBtn.addEventListener('click', () => {
+       vscode.postMessage({ type: 'exportChat' });
+     });
+   }
+
+   const toggleCostPanelBtn = document.getElementById('toggleCostPanelBtn');
+   if (toggleCostPanelBtn) {
+     toggleCostPanelBtn.addEventListener('click', () => {
+       const costPanel = document.getElementById('costPanel');
+       if (costPanel) {
+         if (costPanel.style.display === 'none') {
+           costPanel.style.display = 'block';
+           messagesEl.style.marginRight = 'var(--cost-panel-width)';
+         } else {
+           costPanel.style.display = 'none';
+           messagesEl.style.marginRight = '0';
+         }
+       }
+     });
+   }
   document.getElementById('clearChatBtn').addEventListener('click', () => {
     clearChat();
   });
