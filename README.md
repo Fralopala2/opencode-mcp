@@ -48,7 +48,7 @@ Esta extensión para VS Code / Antigravity es un **panel lateral de chat** conec
 ### Uso
 
 1. Abre el proyecto en VS Code.
-2. Pulsa **F5** para iniciar el **Extension Development Host** o empaqueta la extensión con `npm run package` e instálala manualmente.
+2. Pulsa **F5** para iniciar el **Extension Development Host** o empaqueta la extensión con `npm run package` (esto generará un archivo `.vsix`) e instálala en VS Code desde el menú de la pestaña de extensiones (`Install from VSIX...`).
 3. Abre el panel de OpenCode desde la barra de actividad (icono de OpenCode) o usando el atajo `Ctrl+Alt+O`.
 4. Escribe tu consulta en el panel de chat y envíala con **Enviar** o `Ctrl+Enter`.
 
@@ -70,9 +70,22 @@ El archivo `opencode-adapter.mjs` funciona como un servidor [Model Context Proto
 - Expone la tool `ask_opencode` para el envío de consultas de manera estructurada.
 - Se comunica por `stdio`, arranca automáticamente `opencode serve` si no está encendido, y devuelve respuestas de los agentes y herramientas de OpenCode.
 
+#### Configuración en clientes MCP (ej. Claude Desktop)
+Para integrar este adaptador en Claude Desktop, añade lo siguiente a tu archivo de configuración (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "opencode-mcp": {
+      "command": "node",
+      "args": ["/ruta/absoluta/a/opencode-mcp/opencode-adapter.mjs"]
+    }
+  }
+}
+```
+
 ### Agente Failover y Balanceo de API (`FailoverAgent`)
 Ubicado en `src/agent/failoverAgent.js`, es una solución local para garantizar resiliencia en llamadas al LLM.
-- **Configuración:** Define listas de llaves API en `config/apis.json` por proveedor (ej. `openai`).
+- **Configuración:** Copia el archivo `config/apis.example.json` como `config/apis.json` y define las listas de llaves API por proveedor (ej. `openai`).
 - **Rotación Automática:** Si la API devuelve error HTTP 429 (Rate Limit) o > 500, el agente cambia dinámicamente a la siguiente llave usando el comando `opencode /connect <provider> --key <next-key>` y reintenta la petición.
 
 ## Gestión de contexto
