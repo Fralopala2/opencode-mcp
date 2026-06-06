@@ -18,6 +18,7 @@ Extensión de VS Code / Antigravity (+ todos los IDE que soporten instalacion vi
 - **Gestión de errores detallada**: los mensajes de error de los proveedores (ej. cuota excedida, saldo insuficiente) se parsean y muestran nativamente en el chat.
 - **Adaptador MCP** (`opencode-adapter.mjs`) para acceder a OpenCode desde otros clientes MCP mediante la herramienta `ask_opencode`.
 - **Agente de Failover y Balanceador API** (`FailoverAgent`) para rotar llaves de API automáticamente al detectar fallos o límites de cuota (429).
+- **Seguridad reforzada**: CSP restrictiva en el webview, sanitización de salida HTML, comandos sin shell (`execFile`), y rutas de auth configurables vía `OPENCODE_AUTH_PATH`.
 
 ## Requisitos
 
