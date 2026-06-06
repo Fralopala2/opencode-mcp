@@ -87,6 +87,41 @@
           "type": "string",
           "default": "",
           "description": "Ruta al ejecutable opencode (vacío = auto en Windows/npm). Equivale a OPENCODE_BIN."
+        },
+        "opencode.quickActions": {
+          "type": "array",
+          "default": [
+            {
+              "label": "Explicar archivo actual",
+              "text": "Explica el archivo seleccionado",
+              "icon": "info"
+            },
+            {
+              "label": "Buscar bugs",
+              "text": "Encuentra posibles bugs en el código actual",
+              "icon": "bug"
+            },
+            {
+              "label": "Generar tests",
+              "text": "Genera tests unitarios para las funciones del archivo",
+              "icon": "test"
+            },
+            {
+              "label": "Refactorizar",
+              "text": "Refactoriza el código para mejorar la legibilidad",
+              "icon": "refactor"
+            }
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "text": { "type": "string" },
+              "icon": { "type": "string" }
+            },
+            "required": ["label", "text"]
+          },
+          "description": "Acciones rápidas personalizadas en la pantalla de bienvenida."
         }
       }
     },

@@ -144,9 +144,9 @@ export class HttpOpenCodeClient {
     subscribeEvents(
         onEvent: (event: ServerEvent) => void,
         signal: AbortSignal
-    ): void {
+    ): Promise<void> {
         const url = this.url('/event');
-        void this.consumeSse(url, onEvent, signal);
+        return this.consumeSse(url, onEvent, signal);
     }
 
     private async consumeSse(

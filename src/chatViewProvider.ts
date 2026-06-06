@@ -110,6 +110,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     .map((p) => contextLabel(p)),
                 sessionId,
                 messages: parsedMessages,
+                quickActions: vscode.workspace.getConfiguration('opencode').get('quickActions') || [],
             });
         } catch (error) {
             const msg = error instanceof Error ? error.message : String(error);
@@ -140,7 +141,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 const model = message.model || undefined;
                 const contextParts = [...this.contextAttachments.getItems()];
                 this.contextAttachments.clear();
-                this.post({ type: 'user', text: text || '(Solo adjuntos)' });
                 this.post({ type: 'status', state: 'busy' });
                 this.post({
                     type: 'context',
@@ -181,15 +181,93 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     this.post({ type: 'error', message: msg });
                 }
                 break;
-            case 'clearChat':
-                try {
-                    await this.service.newSession();
-                    await this.refreshState();
-                } catch (error) {
-                    const msg = error instanceof Error ? error.message : String(error);
-                    this.post({ type: 'error', message: msg });
+            case 'clearChat': {
+                const choice = await vscode.window.showWarningMessage(
+                    '¿Estás seguro de que quieres limpiar el chat?',
+                    { modal: true },
+                    'Limpiar'
+                );
+                if (choice === 'Limpiar') {
+                    try {
+                        await this.service.newSession();
+                        await this.refreshState();
+                        this.post({ type: 'chatCleared' });
+                    } catch (error) {
+                        const msg = error instanceof Error ? error.message : String(error);
+                        this.post({ type: 'error', message: msg });
+                    }
                 }
                 break;
+            }
+            case 'exportChat': {
+                const sessionId = this.service.getSessionId();
+                if (!sessionId) {
+                    vscode.window.showErrorMessage('No hay sesión activa para exportar.');
+                    break;
+                }
+                try {
+                    const messages = await this.service.listMessages(sessionId);
+                    if (messages.length === 0) {
+                        vscode.window.showInformationMessage('La conversación está vacía.');
+                        break;
+                    }
+
+                    const format = await vscode.window.showQuickPick(
+                        ['Markdown (.md)', 'JSON (.json)', 'Texto plano (.txt)'],
+                        { placeHolder: 'Selecciona el formato de exportación' }
+                    );
+                    if (!format) {
+                        break;
+                    }
+
+                    let defaultExt = '.md';
+                    let filterName = 'Markdown Files';
+                    if (format.includes('JSON')) {
+                        defaultExt = '.json';
+                        filterName = 'JSON Files';
+                    } else if (format.includes('Texto')) {
+                        defaultExt = '.txt';
+                        filterName = 'Text Files';
+                    }
+
+                    const uri = await vscode.window.showSaveDialog({
+                        defaultUri: vscode.Uri.file(path.join(getWorkspaceDirectory() || '', `chat-export${defaultExt}`)),
+                        filters: { [filterName]: [defaultExt.substring(1)] }
+                    });
+
+                    if (!uri) {
+                        break;
+                    }
+
+                    let content = '';
+                    if (defaultExt === '.json') {
+                        const simpleMessages = messages.map(m => ({
+                            role: m.info.role,
+                            text: partsToDisplayText(m.parts),
+                            timestamp: new Date().toISOString()
+                        }));
+                        content = JSON.stringify(simpleMessages, null, 2);
+                    } else if (defaultExt === '.md') {
+                        content = `# Exportación de Conversación de OpenCode\n\n`;
+                        messages.forEach(m => {
+                            const roleDisplay = m.info.role === 'user' ? 'Tú' : 'OpenCode';
+                            content += `### **${roleDisplay}**\n\n${partsToDisplayText(m.parts)}\n\n---\n\n`;
+                        });
+                    } else {
+                        messages.forEach(m => {
+                            const roleDisplay = m.info.role === 'user' ? 'Tú' : 'OpenCode';
+                            content += `[${roleDisplay}]:\n${partsToDisplayText(m.parts)}\n\n`;
+                        });
+                    }
+
+                    await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
+                    vscode.window.showInformationMessage(`Conversación exportada exitosamente.`);
+                } catch (error) {
+                    const msg = error instanceof Error ? error.message : String(error);
+                    vscode.window.showErrorMessage(`Error al exportar conversación: ${msg}`);
+                }
+                break;
+            }
             case 'abort':
                 try {
                     await this.service.abortSession();
@@ -264,7 +342,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 const model = message.model || undefined;
                 const contextParts = [...this.contextAttachments.getItems()];
                 this.contextAttachments.clear();
-                this.post({ type: 'user', text });
                 this.post({ type: 'status', state: 'busy' });
                 this.post({
                     type: 'context',

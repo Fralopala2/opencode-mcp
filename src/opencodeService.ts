@@ -38,6 +38,8 @@ export class OpenCodeService implements vscode.Disposable {
     private activeStream = new Map<string, string>();
     private sessionTimeout: NodeJS.Timeout | undefined;
     private readonly TIMEOUT_MS = 3 * 60 * 1000; // 3 minutos
+    private reconnectAttempts = 0;
+    private readonly maxReconnectAttempts = 3;
 
     private lastPromptInfo: {
         text: string;
@@ -170,6 +172,7 @@ export class OpenCodeService implements vscode.Disposable {
             }
 
             await this.ensureSession();
+            this.reconnectAttempts = 0;
             void this.startEventSubscription();
             this.setStatus('connected', health.version);
         } catch (error) {
@@ -352,6 +355,29 @@ export class OpenCodeService implements vscode.Disposable {
         }
     }
 
+    private async connectSilent(): Promise<void> {
+        const settings = getOpenCodeSettings();
+        let baseUrl = settings.serverUrl.replace(/\/$/, '');
+        this.client = this.buildClient(baseUrl);
+        let health = await this.client.health();
+
+        if (!health.healthy && settings.autoStartServer) {
+            this.managedServer?.close();
+            const cwd = getWorkspaceDirectory();
+            this.managedServer = await startOpencodeServer(settings.serverPort, cwd);
+            baseUrl = this.managedServer.url.replace(/\/$/, '');
+            this.client = this.buildClient(baseUrl);
+            health = await this.client.health();
+        }
+
+        if (!health.healthy) {
+            throw new Error('OpenCode no responde.');
+        }
+
+        await this.ensureSession();
+        this.setStatus('connected', health.version);
+    }
+
     private async startEventSubscription(): Promise<void> {
         if (!this.client) {
             return;
@@ -361,15 +387,35 @@ export class OpenCodeService implements vscode.Disposable {
         const signal = this.eventAbort.signal;
 
         try {
-            this.client.subscribeEvents(
+            await this.client.subscribeEvents(
                 (event) => {
+                    this.reconnectAttempts = 0;
                     void this.handleEvent(event);
                 },
                 signal
             );
+            if (!signal.aborted) {
+                throw new Error('La conexión al servidor se cerró.');
+            }
         } catch (error) {
             if (signal.aborted) {
                 return;
+            }
+            if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                this.reconnectAttempts++;
+                const delay = Math.pow(2, this.reconnectAttempts) * 1000;
+                console.log(`[Reconexión] Conexión perdida. Reintentando en ${delay}ms... (Intento ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+                await new Promise((r) => setTimeout(r, delay));
+                if (!signal.aborted) {
+                    try {
+                        await this.connectSilent();
+                        void this.startEventSubscription();
+                        this.reconnectAttempts = 0;
+                        return;
+                    } catch (connectError) {
+                        console.error('[Reconexión] Falló reintento de conexión:', connectError);
+                    }
+                }
             }
             const message = error instanceof Error ? error.message : String(error);
             this.setStatus('error', `Event stream: ${message}`);

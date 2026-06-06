@@ -20,6 +20,7 @@
   let streamingBodyNode = null;
   let streamingMetaNode = null;
   let selectedModel = '';
+  let selectedAgent = '';
   let selectedMode = 'auto'; // agent / auto
   let attachments = [];
 
@@ -76,11 +77,35 @@
   }
 
   function renderBody(text) {
-    return text
+    let html = text
       .replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) =>
         `<pre><code>${escHtml(code.trim())}</code></pre>`)
-      .replace(/`([^`]+)`/g, (_, code) => `<code>${escHtml(code)}</code>`)
-      .replace(/\n/g, '<br>');
+      .replace(/`([^`]+)`/g, (_, code) => `<code>${escHtml(code)}</code>`);
+
+    // Reemplazar indicadores de llamadas a herramientas con spinners y estilos Premium
+    html = html.replace(/[>&gt;]\s*⚙️\s*Ejecutando:\s*<code>([^<]+)<\/code>\.\.\./g, (_, tool) => {
+      return `<div class="tool-status running">
+        <span class="tool-spinner"></span>
+        <span>Ejecutando herramienta: <strong>${tool}</strong></span>
+      </div>`;
+    });
+
+    html = html.replace(/[>&gt;]\s*✅\s*Completado:\s*<code>([^<]+)<\/code>/g, (_, tool) => {
+      return `<div class="tool-status success">
+        <span class="tool-icon-check">✓</span>
+        <span>Completado: <strong>${tool}</strong></span>
+      </div>`;
+    });
+
+    html = html.replace(/[>&gt;]\s*❌\s*Error en\s*<code>([^<]+)<\/code>/g, (_, tool) => {
+      return `<div class="tool-status error">
+        <span class="tool-icon-error">✗</span>
+        <span>Error en: <strong>${tool}</strong></span>
+      </div>`;
+    });
+
+    html = html.replace(/\n/g, '<br>');
+    return html;
   }
 
   function escHtml(str) {
@@ -97,6 +122,7 @@
 
     const msgEl = document.createElement('div');
     msgEl.className = 'msg ' + role;
+    msgEl.dataset.rawText = text; // Guardar texto original para edición
 
     const isSystem = role === 'system' || role === 'error';
     const displayRole = isSystem ? role : (role === 'ai' ? 'opencode' : 'tú');
@@ -121,6 +147,12 @@
       </div>
       <div class="msg-body">${bodyHtml}</div>
       <div class="msg-actions">
+        ${role === 'user' ? `
+          <button class="msg-act-btn" onclick="editMsg(this)">
+            <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            editar
+          </button>
+        ` : ''}
         <button class="msg-act-btn" onclick="copyMsg(this)">
           <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           copiar
@@ -133,23 +165,26 @@
   }
 
   function appendMessage(role, text) {
+    const threshold = 120;
+    const isNearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight <= threshold;
+
     const msgEl = createMsgElement(role, text);
     typingEl.before(msgEl);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    if (role === 'user' || isNearBottom) {
+      messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
+    }
     return msgEl;
   }
 
   function clearChat() {
-    // Eliminar todos los mensajes del DOM
-    const msgs = messagesEl.querySelectorAll('.msg');
-    msgs.forEach(m => m.remove());
-    // Mostrar la pantalla de bienvenida
-    if (welcomeEl) welcomeEl.style.display = 'block';
-    // Enviar mensaje al backend para crear nueva sesión (limpiar historial)
     vscode.postMessage({ type: 'clearChat' });
   }
 
   function updateStream(text) {
+    const threshold = 120;
+    const isNearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight <= threshold;
+
     if (!streamingNode) {
       streamingNode = appendMessage('ai', text);
       streamingBodyNode = streamingNode.querySelector('.msg-body');
@@ -158,10 +193,15 @@
         streamingBodyNode.innerHTML = renderBody(text);
       }
     }
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    if (isNearBottom) {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
   }
 
   function finishStream(text, metrics) {
+    const threshold = 120;
+    const isNearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight <= threshold;
+
     if (streamingNode) {
       if (streamingBodyNode && text) {
          streamingBodyNode.innerHTML = renderBody(text);
@@ -178,6 +218,10 @@
     streamingNode = null;
     streamingBodyNode = null;
     streamingMetaNode = null;
+
+    if (isNearBottom) {
+      messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
+    }
   }
 
   window.copyMsg = function(btn) {
@@ -206,8 +250,6 @@
   // Initial mode set; actual handler updated via setStatus
 
   function renderAttachments() {
-    // Buscar tags de adjuntos en la barra superior o en un div nuevo
-    // Reutilizaremos el contextBar
     const existingAtts = contextBar.querySelectorAll('.ctx-att');
     existingAtts.forEach(el => el.remove());
     
@@ -217,9 +259,15 @@
       tag.style.backgroundColor = '#1a334d';
       tag.style.borderColor = '#29527a';
       tag.style.color = '#7ab8ff';
+
+      const isImg = att.mime && att.mime.startsWith('image/');
+      const iconOrThumb = isImg 
+        ? `<img src="${att.url}" style="width:16px;height:16px;object-fit:cover;border-radius:2px;" />`
+        : `<svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2;"><path d="M21.44 11.05L12.25 20.24a6 6 0 01-8.49-8.49l9.2-9.19a4 4 0 015.66 5.65L9.41 17.41a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>`;
+
       tag.innerHTML = `
-        <svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2;"><path d="M21.44 11.05L12.25 20.24a6 6 0 01-8.49-8.49l9.2-9.19a4 4 0 015.66 5.65L9.41 17.41a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-        ${att.filename || 'Adjunto'}
+        ${iconOrThumb}
+        <span style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 4px;">${att.filename || 'Adjunto'}</span>
         <span class="ctx-tag-close">
           <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>
         </span>
@@ -238,9 +286,21 @@
     });
   }
 
+  window.editMsg = function(btn) {
+    const msgEl = btn.closest('.msg');
+    const rawText = msgEl.dataset.rawText || '';
+    inputEl.value = rawText;
+    inputEl.focus();
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  };
+
   function sendMessage() {
     const text = inputEl.value.trim();
     if (!text && attachments.length === 0) return;
+
+    appendMessage('user', text || '(Solo adjuntos)');
+    setStatus('busy');
     
     inputEl.value = '';
     inputEl.style.height = 'auto';
@@ -248,7 +308,7 @@
     vscode.postMessage({ 
       type: 'send', 
       text, 
-      agent: selectedMode === 'agent' ? 'agents' : '', // simplified map
+      agent: selectedAgent || '',
       model: selectedModel,
       attachments: [...attachments]
     });
@@ -258,10 +318,13 @@
   }
 
   window.sendQuick = function(text) {
+    appendMessage('user', text);
+    setStatus('busy');
     vscode.postMessage({
       type: 'quickAction',
       text: text,
-      model: selectedModel
+      model: selectedModel,
+      agent: selectedAgent || ''
     });
   };
 
@@ -269,7 +332,19 @@
     vscode.postMessage({ type: 'addContextFile' });
   };
 
+  function updateTopbarDisplay() {
+    const agentText = selectedAgent ? `@${selectedAgent}` : '';
+    const modelText = selectedModel ? selectedModel.split('::').pop() : '';
+    modelNameEl.innerHTML = `<span class="model-display">${escHtml(modelText || 'default')}</span> ${agentText ? `<span style="opacity:0.5;margin:0 2px;">|</span><span class="agent-display" style="color:var(--accent);">${escHtml(agentText)}</span>` : ''}`;
+  }
+
   // Header buttons
+  const exportChatBtn = document.getElementById('exportChatBtn');
+  if (exportChatBtn) {
+    exportChatBtn.addEventListener('click', () => {
+      vscode.postMessage({ type: 'exportChat' });
+    });
+  }
   document.getElementById('clearChatBtn').addEventListener('click', () => {
     clearChat();
   });
@@ -320,15 +395,33 @@
     const item = e.target.closest('.dropdown-item');
     if (!item) return;
 
-    if (item.hasAttribute('data-value')) {
+    if (item.dataset.value !== undefined) {
       selectedModel = item.dataset.value;
-      modelNameEl.textContent = item.dataset.name;
-      dropdown.querySelectorAll('[data-value]').forEach(i => i.querySelector('.dropdown-check').textContent = '');
+      dropdown.querySelectorAll('[data-value]').forEach(i => {
+        i.querySelector('.dropdown-check').textContent = '';
+        i.classList.remove('active');
+      });
       item.querySelector('.dropdown-check').textContent = '✓';
+      item.classList.add('active');
       dropdown.classList.remove('open');
       dropOverlay.classList.remove('open');
-      // Persist selected model
+      updateTopbarDisplay();
       vscode.postMessage({ type: 'setModel', model: selectedModel });
+    } else if (item.dataset.agent !== undefined) {
+      selectedAgent = item.dataset.agent;
+      const list = dropdown.querySelector('.dropdown-agents-list');
+      if (list) {
+        list.querySelectorAll('[data-agent]').forEach(i => {
+          i.querySelector('.dropdown-check').textContent = '';
+          i.classList.remove('active');
+        });
+      }
+      item.querySelector('.dropdown-check').textContent = '✓';
+      item.classList.add('active');
+      dropdown.classList.remove('open');
+      dropOverlay.classList.remove('open');
+      updateTopbarDisplay();
+      vscode.postMessage({ type: 'setAgent', agent: selectedAgent });
     }
   });
   dropdown.querySelectorAll('[data-mode]').forEach(item => {
@@ -381,6 +474,79 @@
               appendMeta(node.querySelector('.msg-body'), m.metrics);
             }
           });
+        }
+
+        // Renderizar agentes en el desplegable
+        if (msg.selectedAgent !== undefined) {
+          selectedAgent = msg.selectedAgent;
+        }
+        if (msg.agents) {
+          let agentSection = dropdown.querySelector('.dropdown-section-agents');
+          if (!agentSection) {
+            agentSection = document.createElement('div');
+            agentSection.className = 'dropdown-section dropdown-section-agents';
+            const modeSection = Array.from(dropdown.querySelectorAll('.dropdown-section')).find(s => s.querySelector('.dropdown-label')?.textContent === 'Modo');
+            if (modeSection) {
+              dropdown.insertBefore(agentSection, modeSection);
+            } else {
+              dropdown.appendChild(agentSection);
+            }
+          }
+          agentSection.innerHTML = '<div class="dropdown-label">Agente</div>';
+          const agentsList = document.createElement('div');
+          agentsList.className = 'dropdown-agents-list';
+          agentsList.style.maxHeight = '150px';
+          agentsList.style.overflowY = 'auto';
+
+          // Opción Default
+          const defaultItem = document.createElement('div');
+          defaultItem.className = 'dropdown-item' + (!selectedAgent ? ' active' : '');
+          defaultItem.dataset.agent = '';
+          defaultItem.innerHTML = `
+            <div class="dropdown-check">${!selectedAgent ? '✓' : ''}</div>
+            <div style="flex:1;">Default</div>
+          `;
+          agentsList.appendChild(defaultItem);
+
+          msg.agents.forEach(agent => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item' + (selectedAgent === agent.name ? ' active' : '');
+            item.dataset.agent = agent.name;
+            item.title = agent.description || '';
+            item.innerHTML = `
+              <div class="dropdown-check">${selectedAgent === agent.name ? '✓' : ''}</div>
+              <div style="flex:1;">${escHtml(agent.name)}</div>
+            `;
+            agentsList.appendChild(item);
+          });
+          agentSection.appendChild(agentsList);
+        }
+
+        // Renderizar Quick Actions configurables
+        if (msg.quickActions && msg.quickActions.length > 0) {
+          const container = document.getElementById('quickActionsContainer');
+          if (container) {
+            container.innerHTML = '';
+            msg.quickActions.forEach(qa => {
+              const btn = document.createElement('button');
+              btn.className = 'qa-btn';
+              btn.onclick = () => sendQuick(qa.text);
+              let svg = '';
+              if (qa.icon === 'info') {
+                svg = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>';
+              } else if (qa.icon === 'bug') {
+                svg = '<svg viewBox="0 0 24 24"><path d="M9 9l-3-3M15 9l3-3M9 15l-3 3M15 15l3 3M12 21a9 9 0 100-18 9 9 0 000 18z"/></svg>';
+              } else if (qa.icon === 'test') {
+                svg = '<svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7 2h10l2 2v16l-2 2H7l-2-2V4l2-2z"/></svg>';
+              } else if (qa.icon === 'refactor') {
+                svg = '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>';
+              } else {
+                svg = '<svg viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2z"/></svg>';
+              }
+              btn.innerHTML = `${svg} ${escHtml(qa.label)}`;
+              container.appendChild(btn);
+            });
+          }
         }
 
         if (msg.models && msg.models.length > 0) {
@@ -492,7 +658,7 @@
             // Find the model name from the list
             const foundModel = msg.models.find(m => (typeof m === 'string' ? m : m.id) === selectedModel);
             if (foundModel) {
-              modelNameEl.textContent = typeof foundModel === 'string' ? foundModel : foundModel.name;
+              // handled by updateTopbarDisplay
             } else {
               selectedModel = '';
             }
@@ -501,14 +667,17 @@
           if (!selectedModel) {
             const first = msg.models[0];
             selectedModel = typeof first === 'string' ? first : first.id;
-            modelNameEl.textContent = typeof first === 'string' ? first : first.name;
-          } else {
-            const selectedObj = msg.models.find(m => (typeof m === 'string' ? m : m.id) === selectedModel);
-            if (selectedObj) {
-              modelNameEl.textContent = typeof selectedObj === 'string' ? selectedObj : selectedObj.name;
-            }
           }
+          
+          updateTopbarDisplay();
         }
+        break;
+      case 'chatCleared':
+        // Eliminar todos los mensajes del DOM
+        const msgsToClear = messagesEl.querySelectorAll('.msg');
+        msgsToClear.forEach(m => m.remove());
+        if (welcomeEl) welcomeEl.style.display = 'block';
+        break;
         break;
       case 'connection':
         setStatus(msg.state, msg.detail);
