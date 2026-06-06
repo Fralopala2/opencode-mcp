@@ -6,6 +6,13 @@
 
 Extensión de VS Code / Antigravity (+ todos los IDE que soporten instalacion via .vsix) que integra un **panel lateral de chat** con tu instancia local de **OpenCode**, permitiendo interactuar con tus **agents**, **skills**, **MCP** y **providers** configurados en `~/.config/opencode/opencode.jsonc`.
 
+<div align="center">
+  <img src="resources/1.png" alt="Panel de Chat 1" height="300" style="vertical-align: middle; margin: 0 10px;" />
+  <img src="resources/2.png" alt="Panel de Chat 2" height="300" style="vertical-align: middle; margin: 0 10px;" />
+  <img src="resources/3.png" alt="Panel de Chat 3" height="300" style="vertical-align: middle; margin: 0 10px;" />
+</div>
+
+
 ## Características
 
 - **Conexión directa** con tu servidor local de OpenCode.
