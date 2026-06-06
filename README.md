@@ -4,7 +4,8 @@
 
 # OpenCode Panel (VS Code / Antigravity)
 
-Extensión de VS Code / Antigravity (+ todos los IDE que soporten instalacion via .vsix) que integra un **panel lateral de chat** con tu instancia local de **OpenCode**, permitiendo interactuar con tus **agents**, **skills**, **MCP** y **providers** configurados en `~/.config/opencode/opencode.jsonc`.
+Esta extensión para VS Code / Antigravity es un **panel lateral de chat** conectado directamente a tu instancia local de **OpenCode**. Permite interactuar con tus **agents**, **skills**, **MCP** y **providers** configurados en `~/.config/opencode/opencode.jsonc` e incorpora características avanzadas como **historial de chat persistente**, **gestión de errores**, **adaptador MCP**, **agente de failover** y **panel de costos acumulativos** en tiempo real.
+
 
 <div align="center">
   <img src="resources/1.png" alt="Panel de Chat 1" height="300" style="vertical-align: middle; margin: 0 10px;" />
