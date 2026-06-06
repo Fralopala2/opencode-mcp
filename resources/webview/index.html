@@ -5,8 +5,69 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}} 'unsafe-inline'; script-src 'nonce-{{nonce}}'; img-src data: {{cspSource}};">
 <title>OpenCode</title>
-<style>
-  :root {
+  <style>
+   :root {
+    --cost-panel-width: 250px;
+   }
+
+   /* Estilos para el panel de costos */
+   .cost-panel {
+     width: var(--cost-panel-width);
+     background-color: #1e1e1e;
+     border-left: 1px solid #333;
+     padding: 10px;
+     color: #ccc;
+     font-family: Arial, sans-serif;
+     height: 100%;
+     position: fixed;
+     right: 0;
+     top: 0;
+     overflow-y: auto;
+     z-index: 10;
+   }
+
+   .cost-header {
+     text-align: center;
+     margin-bottom: 15px;
+     color: #fff;
+   }
+
+   .cost-content {
+     display: flex;
+     flex-direction: column;
+     gap: 10px;
+   }
+
+   .cost-entry {
+     padding: 8px;
+     border-radius: 4px;
+     background-color: #252526;
+   }
+
+   .cost-date {
+     font-weight: bold;
+     margin-bottom: 5px;
+     color: #9cdcfe;
+   }
+
+   .cost-model {
+     font-size: 12px;
+     color: #d4d4d4;
+     display: flex;
+     justify-content: space-between;
+   }
+
+   .cost-amount {
+     text-align: right;
+     font-weight: bold;
+     color: #ce9178;
+   }
+
+   /* Ajustar el área de mensajes para dejar espacio al panel de costos */
+   .messages {
+     margin-right: var(--cost-panel-width);
+   }
+   
     --bg-base:      #0d0d0d;
     --bg-panel:     #141414;
     --bg-input:     #1a1a1a;
@@ -981,8 +1042,18 @@
     <span class="mode-pill" id="modePill">auto</span>
     <span class="shortcut-hint">Enter ↵</span>
   </div>
-</div>
+  </div>
 
-<script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+  <!-- Panel de Costos -->
+  <div id="costPanel" class="cost-panel">
+    <div class="cost-header">
+      <h3>Costos Acumulativos</h3>
+    </div>
+    <div id="costContent" class="cost-content">
+      <!-- Aquí se mostrarán los costos -->
+    </div>
+  </div>
+
+  <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
 </body>
 </html>

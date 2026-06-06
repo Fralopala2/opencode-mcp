@@ -24,7 +24,39 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 if (update.error) {
                     this.post({ type: 'error', message: update.error });
                 } else {
-                    this.post({ type: 'assistantDone', text: update.text, metrics: update.metrics });
+                     this.post({ type: 'assistantDone', text: update.text, metrics: update.metrics });
+                     
+                     // Actualizar costos en el archivo
+                     if (update.metrics) {
+                         const today = new Date().toISOString().split('T')[0];
+                         const model = this.service.getSelectedModel() || 'default';
+                         const costDataPath = path.join(this.extensionUri.fsPath, 'costData.json');
+                         
+                         let costData = {};
+                         try {
+                             if (fs.existsSync(costDataPath)) {
+                                 const data = fs.readFileSync(costDataPath, 'utf-8');
+                                 costData = JSON.parse(data);
+                             }
+                         } catch (error) {
+                             console.error('Error loading cost data:', error);
+                         }
+                         
+                         const cost = this.calculateCost(update.metrics.input, update.metrics.output, model);
+                         
+                         if (!costData[today]) {
+                             costData[today] = {};
+                         }
+                         
+                         if (!costData[today][model]) {
+                             costData[today][model] = { usd: 0, eur: 0 };
+                         }
+                         
+                         costData[today][model].usd += cost.usd;
+                         costData[today][model].eur += cost.eur;
+                         
+                         fs.writeFileSync(costDataPath, JSON.stringify(costData, null, 2));
+                     }
                 }
                 this.post({ type: 'status', state: 'idle' });
             } else {
@@ -58,9 +90,22 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         });
 
         void this.refreshState();
-    }
+     }
 
-    focus(): void {
+     private calculateCost(inputTokens: number, outputTokens: number, model: string): { usd: number, eur: number } {
+         const modelPrices: Record<string, { input: number, output: number }> = {
+           'mistral-medium-latest': { input: 2.00, output: 6.00 },
+           'default': { input: 2.00, output: 6.00 }
+         };
+
+         const price = modelPrices[model] || modelPrices['default'];
+         const usd = (inputTokens * price.input + outputTokens * price.output) / 1000000;
+         const eur = usd * 0.92;
+
+         return { usd, eur };
+     }
+
+     focus(): void {
         if (this.view) {
             this.view.show?.(true);
         } else {
@@ -96,22 +141,34 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 }
             }
 
-            this.post({
-                type: 'init',
-                agents: primary.map((a) => ({
-                    name: a.name,
-                    description: a.description ?? '',
-                })),
-                models,
-                selectedAgent: this.selectedAgent,
-                selectedModel: this.service.getSelectedModel(),
-                context: this.contextAttachments
-                    .getItems()
-                    .map((p) => contextLabel(p)),
-                sessionId,
-                messages: parsedMessages,
-                quickActions: vscode.workspace.getConfiguration('opencode').get('quickActions') || [],
-            });
+                 let costData = {};
+                 try {
+                     const costDataPath = path.join(this.extensionUri.fsPath, 'costData.json');
+                     if (fs.existsSync(costDataPath)) {
+                         const data = fs.readFileSync(costDataPath, 'utf-8');
+                         costData = JSON.parse(data);
+                     }
+                 } catch (error) {
+                     console.error('Error loading cost data:', error);
+                 }
+
+                 this.post({
+                     type: 'init',
+                     agents: primary.map((a) => ({
+                         name: a.name,
+                         description: a.description ?? '',
+                     })),
+                     models,
+                     selectedAgent: this.selectedAgent,
+                     selectedModel: this.service.getSelectedModel(),
+                     context: this.contextAttachments
+                         .getItems()
+                         .map((p) => contextLabel(p)),
+                     sessionId,
+                     messages: parsedMessages,
+                     quickActions: vscode.workspace.getConfiguration('opencode').get('quickActions') || [],
+                     costData
+                 });
         } catch (error) {
             const msg = error instanceof Error ? error.message : String(error);
             this.post({ type: 'error', message: msg });

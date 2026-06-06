@@ -16,13 +16,14 @@
   // Seleccionamos los botones de las herramientas (usaremos sus titles o indices, mejor añadimos un event listener al botón de adjuntar por su tooltip)
   const attachBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Adjuntar'));
 
-  let streamingNode = null;
-  let streamingBodyNode = null;
-  let streamingMetaNode = null;
-  let selectedModel = '';
-  let selectedAgent = '';
-  let selectedMode = 'auto'; // agent / auto
-  let attachments = [];
+   let streamingNode = null;
+   let streamingBodyNode = null;
+   let streamingMetaNode = null;
+   let selectedModel = '';
+   let selectedAgent = '';
+   let selectedMode = 'auto'; // agent / auto
+   let attachments = [];
+   let costData = {};
 
 
 
@@ -55,17 +56,58 @@
   
   
 
-  function appendMeta(node, metrics) {
-    if (!metrics) return;
-    const meta = document.createElement('div');
-    meta.className = 'msg-meta';
-    meta.style.fontSize = '10px';
-    meta.style.color = 'var(--text-sec)';
-    meta.style.marginTop = '6px';
-    meta.style.textAlign = 'right';
-    meta.textContent = `Tokens - In: ${metrics.input || 0} | Out: ${metrics.output || 0}`;
-    node.appendChild(meta);
-  }
+   function appendMeta(node, metrics) {
+     if (!metrics) return;
+     const meta = document.createElement('div');
+     meta.className = 'msg-meta';
+     meta.style.fontSize = '10px';
+     meta.style.color = 'var(--text-sec)';
+     meta.style.marginTop = '6px';
+     meta.style.textAlign = 'right';
+     meta.textContent = `Tokens - In: ${metrics.input || 0} | Out: ${metrics.output || 0}`;
+     node.appendChild(meta);
+   }
+
+   function updateCostPanel() {
+     const costContent = document.getElementById('costContent');
+     if (!costContent) return;
+
+     costContent.innerHTML = '';
+
+     const dates = Object.keys(costData).sort((a, b) => new Date(b) - new Date(a));
+
+     dates.forEach(date => {
+       const dateEntry = document.createElement('div');
+       dateEntry.className = 'cost-entry';
+
+       const dateHeader = document.createElement('div');
+       dateHeader.className = 'cost-date';
+       dateHeader.textContent = date;
+
+       const models = costData[date];
+       const modelEntries = Object.keys(models).map(model => {
+         const modelEntry = document.createElement('div');
+         modelEntry.className = 'cost-model';
+
+         const modelName = document.createElement('span');
+         modelName.textContent = model;
+
+         const modelCost = document.createElement('span');
+         modelCost.className = 'cost-amount';
+         modelCost.textContent = `$${models[model].usd.toFixed(6)} | €${models[model].eur.toFixed(6)}`;
+
+         modelEntry.appendChild(modelName);
+         modelEntry.appendChild(modelCost);
+
+         return modelEntry;
+       });
+
+       dateEntry.appendChild(dateHeader);
+       modelEntries.forEach(entry => dateEntry.appendChild(entry));
+
+       costContent.appendChild(dateEntry);
+     });
+   }
 
   function showTyping() {
     typingEl.classList.add('visible');
@@ -456,10 +498,25 @@
     }
   });
 
-  window.addEventListener('message', (event) => {
+   function calculateCost(inputTokens, outputTokens, model) {
+     const modelPrices = {
+       'mistral-medium-latest': { input: 2.00, output: 6.00 },
+       'default': { input: 2.00, output: 6.00 }
+     };
+
+     const price = modelPrices[model] || modelPrices['default'];
+     const usd = (inputTokens * price.input + outputTokens * price.output) / 1000000;
+     const eur = usd * 0.92;
+
+     return { usd, eur };
+   }
+
+   window.addEventListener('message', (event) => {
     const msg = event.data;
     switch (msg.type) {
-      case 'init':
+       case 'init':
+         costData = msg.costData || {};
+         updateCostPanel();
         // Clear existing messages
         const msgs = messagesEl.querySelectorAll('.msg');
         msgs.forEach(m => m.remove());
@@ -691,9 +748,27 @@
       case 'assistantStream':
         updateStream(msg.text);
         break;
-      case 'assistantDone':
-        finishStream(msg.text, msg.metrics);
-        break;
+       case 'assistantDone':
+         finishStream(msg.text, msg.metrics);
+         if (msg.metrics) {
+           const today = new Date().toISOString().split('T')[0];
+           const model = selectedModel || 'default';
+           const cost = calculateCost(msg.metrics.input, msg.metrics.output, model);
+
+           if (!costData[today]) {
+             costData[today] = {};
+           }
+
+           if (!costData[today][model]) {
+             costData[today][model] = { usd: 0, eur: 0 };
+           }
+
+           costData[today][model].usd += cost.usd;
+           costData[today][model].eur += cost.eur;
+
+           updateCostPanel();
+         }
+         break;
       case 'system':
         appendMessage('system', msg.text);
         break;
