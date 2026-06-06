@@ -34,39 +34,29 @@ class FailoverAgent {
       } catch (error) {
         console.error(`[FailoverAgent] OpenCode devolvió un error:`, error.response?.data || error.message);
         
-        const isRateLimit = error.response?.status === 429;
-        const isServerError = error.response?.status >= 500;
-        const isTimeout = error.code === 'ECONNABORTED';
-
-        // Si OpenCode falló porque la API original falló (429, 500) o hubo timeout
-        if (isRateLimit || isServerError || isTimeout) {
-          currentIndex++;
+        currentIndex++;
+        
+        if (currentIndex < keys.length) {
+          const nextApiKey = keys[currentIndex];
+          const modelName = requestData?.model; // Extraemos el modelo de la petición original
+          console.log(`[FailoverAgent] Cambiando OpenCode a la siguiente key de ${providerName}...`);
           
-          if (currentIndex < keys.length) {
-            const nextApiKey = keys[currentIndex];
-            const modelName = requestData?.model; // Extraemos el modelo de la petición original
-            console.log(`[FailoverAgent] Cambiando OpenCode a la siguiente key de ${providerName}...`);
-            
-            try {
-              // Actualizamos la key en el OpenCode local y aseguramos que use el mismo modelo
-              let cmd = `opencode /connect ${providerName} --key ${nextApiKey}`;
-              if (modelName) {
-                cmd += ` --model ${modelName}`;
-              }
-              
-              await execPromise(cmd);
-              console.log(`[FailoverAgent] Key (y modelo) actualizados en OpenCode. Reintentando...`);
-              // Esperar un poco para que OpenCode asimile la nueva key si es necesario
-              await new Promise(r => setTimeout(r, 1000));
-            } catch (err) {
-              console.error("[FailoverAgent] Error al ejecutar /connect en OpenCode:", err.message);
+          try {
+            // Actualizamos la key en el OpenCode local y aseguramos que use el mismo modelo
+            let cmd = `opencode /connect ${providerName} --key ${nextApiKey}`;
+            if (modelName) {
+              cmd += ` --model ${modelName}`;
             }
-          } else {
-            throw new Error(`Todas las keys de backup para ${providerName} han fallado.`);
+            
+            await execPromise(cmd);
+            console.log(`[FailoverAgent] Key (y modelo) actualizados en OpenCode. Reintentando...`);
+            // Esperar un poco para que OpenCode asimile la nueva key si es necesario
+            await new Promise(r => setTimeout(r, 1000));
+          } catch (err) {
+            console.error("[FailoverAgent] Error al ejecutar /connect en OpenCode:", err.message);
           }
         } else {
-          // Error no recuperable
-          throw error;
+          throw new Error(`Todas las keys de backup para ${providerName} han fallado. Último error: ${error.message}`);
         }
       }
     }
