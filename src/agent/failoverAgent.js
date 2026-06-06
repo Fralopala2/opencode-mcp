@@ -17,6 +17,8 @@ class FailoverAgent {
   async callAPI(providerName, requestData) {
     let currentProvider = providerName;
     let currentRequestData = { ...requestData };
+    const getKeyStr = (item) => (typeof item === 'string' ? item : item?.key);
+    const isKeyFailed = (item) => (typeof item === 'string' ? false : !!item?.failed);
     
     // Intentamos hasta que encontremos una clave exitosa o se agoten todos los proveedores
     while (true) {
@@ -37,15 +39,23 @@ class FailoverAgent {
       // 2. Determinar el siguiente índice de clave
       let nextIndex = 0;
       if (activeKey) {
-        const idx = keys.indexOf(activeKey);
+        const idx = keys.findIndex(item => getKeyStr(item) === activeKey);
         if (idx !== -1) {
           nextIndex = idx + 1;
         }
       }
 
       let nextApiKey;
-      if (nextIndex < keys.length) {
-        nextApiKey = keys[nextIndex];
+      let foundIdx = -1;
+      for (let i = nextIndex; i < keys.length; i++) {
+        if (!isKeyFailed(keys[i])) {
+          foundIdx = i;
+          break;
+        }
+      }
+
+      if (foundIdx !== -1) {
+        nextApiKey = getKeyStr(keys[foundIdx]);
       } else {
         // Rotar al siguiente proveedor
         const providers = Object.keys(this.config);
@@ -55,9 +65,11 @@ class FailoverAgent {
         for (let i = 1; i <= providers.length; i++) {
           const nextProvIdx = (currentProvIdx + i) % providers.length;
           const prov = providers[nextProvIdx];
-          if (this.config[prov] && this.config[prov].length > 0) {
+          const provKeys = this.config[prov] || [];
+          const activeKeyItem = provKeys.find(item => !isKeyFailed(item));
+          if (activeKeyItem) {
             currentProvider = prov;
-            nextApiKey = this.config[prov][0];
+            nextApiKey = getKeyStr(activeKeyItem);
             found = true;
             break;
           }
@@ -82,10 +94,41 @@ class FailoverAgent {
         return response.data;
 
       } catch (error) {
-        console.error(`[FailoverAgent] OpenCode devolvió un error:`, error.response?.data || error.message);
+        const errorObj = error.response?.data || error;
+        let errMsg = '';
+        if (errorObj && typeof errorObj.error === 'string') {
+          errMsg = errorObj.error;
+        } else if (errorObj && errorObj.error && typeof errorObj.error.message === 'string') {
+          errMsg = errorObj.error.message;
+        } else if (errorObj && typeof errorObj.message === 'string') {
+          errMsg = errorObj.message;
+        } else {
+          errMsg = typeof errorObj === 'string' ? errorObj : JSON.stringify(errorObj);
+        }
+        console.error(`[FailoverAgent] OpenCode devolvió un error:`, errMsg);
         
         console.log(`[FailoverAgent] Cambiando OpenCode a la siguiente key/proveedor...`);
         
+        // Marcar la clave fallida en config/apis.json
+        if (activeKey) {
+          const keysList = this.config[currentProvider] || [];
+          const keyIdx = keysList.findIndex(item => getKeyStr(item) === activeKey);
+          if (keyIdx !== -1) {
+            keysList[keyIdx] = {
+              key: activeKey,
+              failed: true,
+              error: errMsg,
+              failedAt: new Date().toISOString()
+            };
+            try {
+              fs.writeFileSync('config/apis.json', JSON.stringify(this.config, null, 2), 'utf8');
+              console.log(`[FailoverAgent] Llave fallida marcada en apis.json.`);
+            } catch (err) {
+              console.error("[FailoverAgent] Error al escribir apis.json:", err.message);
+            }
+          }
+        }
+
         // 3. Escribir la nueva clave en auth.json
         if (fs.existsSync(authPath)) {
           try {

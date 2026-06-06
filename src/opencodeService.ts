@@ -494,11 +494,34 @@ export class OpenCodeService implements vscode.Disposable {
                 }
             }
 
+            // Marcar la clave fallida en config/apis.json
+            if (activeKey) {
+                const keysList = config[providerName] || [];
+                const keyIdx = keysList.findIndex((item: any) => (typeof item === 'string' ? item : item?.key) === activeKey);
+                if (keyIdx !== -1) {
+                    keysList[keyIdx] = {
+                        key: activeKey,
+                        failed: true,
+                        error: errMsg,
+                        failedAt: new Date().toISOString()
+                    };
+                    try {
+                        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+                        console.log('[Failover] Llave fallida marcada en apis.json.');
+                    } catch (err: any) {
+                        console.error('[Failover] Error al escribir apis.json:', err.message);
+                    }
+                }
+            }
+
             // 2. Determinar el siguiente índice de clave para el proveedor actual
             const keys = config[providerName] || [];
+            const getKeyStr = (item: any) => (typeof item === 'string' ? item : item?.key);
+            const isKeyFailed = (item: any) => (typeof item === 'string' ? false : !!item?.failed);
+
             let nextIndex = 0;
             if (activeKey) {
-                const idx = keys.indexOf(activeKey);
+                const idx = keys.findIndex((item: any) => getKeyStr(item) === activeKey);
                 if (idx !== -1) {
                     nextIndex = idx + 1;
                 }
@@ -508,9 +531,16 @@ export class OpenCodeService implements vscode.Disposable {
             let targetProvider = providerName;
             let targetModel = modelName;
 
-            if (nextIndex < keys.length) {
-                // Hay más claves para el proveedor actual
-                nextApiKey = keys[nextIndex];
+            let foundIdx = -1;
+            for (let i = nextIndex; i < keys.length; i++) {
+                if (!isKeyFailed(keys[i])) {
+                    foundIdx = i;
+                    break;
+                }
+            }
+
+            if (foundIdx !== -1) {
+                nextApiKey = getKeyStr(keys[foundIdx]);
             } else {
                 // No hay más claves para el proveedor actual, buscar el siguiente proveedor disponible en apis.json
                 const providers = Object.keys(config);
@@ -521,9 +551,11 @@ export class OpenCodeService implements vscode.Disposable {
                 for (let i = 1; i <= providers.length; i++) {
                     const nextProvIdx = (currentProvIdx + i) % providers.length;
                     const prov = providers[nextProvIdx];
-                    if (config[prov] && config[prov].length > 0) {
+                    const provKeys = config[prov] || [];
+                    const activeKeyItem = provKeys.find((item: any) => !isKeyFailed(item));
+                    if (activeKeyItem) {
                         targetProvider = prov;
-                        nextApiKey = config[prov][0]; // Primera clave del nuevo proveedor
+                        nextApiKey = getKeyStr(activeKeyItem);
                         found = true;
                         break;
                     }
