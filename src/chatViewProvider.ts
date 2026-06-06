@@ -31,7 +31,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                          const today = new Date().toISOString().split('T')[0];
                          const model = this.service.getSelectedModel() || 'default';
                          
-                         let costData: Record<string, any> = this.context.globalState.get('costData') || {};
+                         let costData: Record<string, any> = JSON.parse(JSON.stringify(this.context.globalState.get('costData') || {}));
                          
                          const cost = this.calculateCost(update.metrics.input, update.metrics.output, model);
                          
@@ -132,7 +132,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 }
             }
 
-                 let costData: Record<string, any> = this.context.globalState.get('costData') || {};
+                 let costData: Record<string, any> = JSON.parse(JSON.stringify(this.context.globalState.get('costData') || {}));
 
                  this.post({
                      type: 'init',
@@ -497,7 +497,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 }
                 break;
             case 'loadCostData': {
-                let costData: Record<string, any> = this.context.globalState.get('costData') || {};
+                let costData: Record<string, any> = JSON.parse(JSON.stringify(this.context.globalState.get('costData') || {}));
                 this.post({ type: 'costDataUpdate', costData });
                 break;
             }
@@ -526,25 +526,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             'webview',
             'main.js'
         );
-        const logoPath = path.join(
-            this.context.extensionUri.fsPath,
-            'resources',
-            'logo.svg'
-        );
         let html = fs.readFileSync(htmlPath, 'utf8');
         const scriptUri = webview
             .asWebviewUri(vscode.Uri.file(scriptPath))
-            .toString();
-        const logoUri = webview
-            .asWebviewUri(vscode.Uri.file(logoPath))
             .toString();
         const nonce = getNonce();
 
         html = html
             .replaceAll('{{cspSource}}', webview.cspSource)
             .replaceAll('{{nonce}}', nonce)
-            .replaceAll('{{scriptUri}}', scriptUri)
-            .replaceAll('{{logoUri}}', logoUri);
+            .replaceAll('{{scriptUri}}', scriptUri);
 
         return html;
     }
