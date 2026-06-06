@@ -17,9 +17,10 @@ Extensión de VS Code / Antigravity (+ todos los IDE que soporten instalacion vi
 - **Historial persistente**: las sesiones se guardan y asocian automáticamente al workspace (proyecto) actual, manteniéndose entre reinicios.
 - **Gestión de errores detallada**: los mensajes de error de los proveedores (ej. cuota excedida, saldo insuficiente) se parsean y muestran nativamente en el chat.
 - **Adaptador MCP** (`opencode-adapter.mjs`) para acceder a OpenCode desde otros clientes MCP mediante la herramienta `ask_opencode`.
-- **Agente de Failover y Balanceador API** (`FailoverAgent`) para rotar llaves de API automáticamente al detectar fallos o límites de cuota (429).
+- **Agente de Failover y Balanceo API** (`FailoverAgent`) para rotar llaves de API automáticamente al detectar fallos o límites de cuota (429), con persistencia del modelo de respaldo sin mutar la selección original del usuario.
 - **Panel de costos acumulativos**: seguimiento en tiempo real del costo por sesión agrupado por fecha y modelo, con soporte multi-moneda (USD/EUR) y persistencia en `costData.json`.
 - **Seguridad reforzada**: CSP restrictiva en el webview, sanitización de salida HTML, comandos sin shell (`execFile`), y rutas de auth configurables vía `OPENCODE_AUTH_PATH`.
+- **Robustez y estabilidad**: Timeout de 3 minutos con cancelación automática, reconexión automática (hasta 3 intentos con backoff exponencial), failover de API keys con rotación entre proveedores, parsing SSE tolerante a CRLF/LF, y detección de caídas de conexión SSE para no dejar el chat colgado.
 
 ## Requisitos
 

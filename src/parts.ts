@@ -94,7 +94,11 @@ export function partsToDisplayText(parts: Part[]): string {
                 break;
         }
     }
-    return chunks.join('\n\n').trim() || '(sin contenido de texto)';
+    const text = chunks.join('\n\n').trim();
+    if (!text && parts.length > 0) {
+        return '';
+    }
+    return text || '(sin contenido de texto)';
 }
 
 export function contextLabel(part: PromptPart): string {

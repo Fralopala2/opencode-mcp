@@ -9,7 +9,8 @@ const execPromise = util.promisify(exec);
 class FailoverAgent {
   constructor(env = 'prod') {
     this.env = env;
-    this.config = JSON.parse(fs.readFileSync('config/apis.json'));
+    this.configPath = path.resolve(__dirname, '..', '..', 'config', 'apis.json');
+    this.config = JSON.parse(fs.readFileSync(this.configPath, 'utf8'));
     // Si es prod usa OpenCode local, si es test usa el mock
     this.opencodeEndpoint = env === 'test' ? 'http://localhost:3002/mock-api' : 'http://127.0.0.1:4096/v1/chat/completions';
   }
@@ -121,7 +122,7 @@ class FailoverAgent {
               failedAt: new Date().toISOString()
             };
             try {
-              fs.writeFileSync('config/apis.json', JSON.stringify(this.config, null, 2), 'utf8');
+              fs.writeFileSync(this.configPath, JSON.stringify(this.config, null, 2), 'utf8');
               console.log(`[FailoverAgent] Llave fallida marcada en apis.json.`);
             } catch (err) {
               console.error("[FailoverAgent] Error al escribir apis.json:", err.message);

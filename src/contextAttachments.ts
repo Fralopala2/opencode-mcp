@@ -64,12 +64,16 @@ export class ContextAttachments {
                 if (!(input instanceof vscode.TabInputText)) {
                     continue;
                 }
-                const doc = await vscode.workspace.openTextDocument(input.uri);
-                if (doc.isUntitled) {
-                    continue;
+                try {
+                    const doc = await vscode.workspace.openTextDocument(input.uri);
+                    if (doc.isUntitled) {
+                        continue;
+                    }
+                    this.addPart(buildFilePart(doc.uri.fsPath, doc.getText()));
+                    count++;
+                } catch {
+                    // Ignorar pestañas que no se pueden abrir como texto
                 }
-                this.addPart(buildFilePart(doc.uri.fsPath, doc.getText()));
-                count++;
             }
         }
         if (count === 0) {

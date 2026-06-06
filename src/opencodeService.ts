@@ -37,6 +37,7 @@ export class OpenCodeService implements vscode.Disposable {
         (state: ConnectionState, detail?: string) => void
     >();
     private activeStream = new Map<string, string>();
+    private pendingPrompts = new Map<string, { resolve: () => void; reject: (err: Error) => void }>();
     private sessionTimeout: NodeJS.Timeout | undefined;
     private readonly TIMEOUT_MS = 3 * 60 * 1000; // 3 minutos
     private reconnectAttempts = 0;
@@ -66,12 +67,17 @@ export class OpenCodeService implements vscode.Disposable {
     }
 
     private async handleTimeout(sessionId: string): Promise<void> {
+        if (!this.activeStream.has(sessionId)) {
+            return;
+        }
+        const text = this.activeStream.get(sessionId) ?? '';
+        this.activeStream.delete(sessionId);
         this.abortSession(true).catch(err => {
             console.error('[Timeout] Error al abortar la sesión:', err);
         });
         this.emitStream({
             sessionId,
-            text: this.activeStream.get(sessionId) ?? '',
+            text,
             done: true,
             error: 'La petición tardó demasiado y fue cancelada automáticamente (timeout de 3m).',
             statusDetail: 'Timeout de 3 minutos alcanzado.'
@@ -107,6 +113,17 @@ export class OpenCodeService implements vscode.Disposable {
     private emitStream(update: StreamUpdate): void {
         for (const listener of this.streamListeners) {
             listener(update);
+        }
+        if (update.done) {
+            const pending = this.pendingPrompts.get(update.sessionId);
+            if (pending) {
+                this.pendingPrompts.delete(update.sessionId);
+                if (update.error) {
+                    pending.reject(new Error(update.error));
+                } else {
+                    pending.resolve();
+                }
+            }
         }
     }
 
@@ -312,7 +329,8 @@ export class OpenCodeService implements vscode.Disposable {
         agent: string | undefined,
         model: string | undefined,
         contextParts: PromptPart[],
-        attachments: PromptPart[] = []
+        attachments: PromptPart[] = [],
+        isFailover: boolean = false
     ): Promise<void> {
         if (!this.client) {
             await this.connect();
@@ -321,7 +339,9 @@ export class OpenCodeService implements vscode.Disposable {
             throw new Error('Sin conexión a OpenCode');
         }
 
-        this.lastPromptInfo = { text, agent, model, contextParts, attachments };
+        if (!isFailover) {
+            this.lastPromptInfo = { text, agent, model, contextParts, attachments };
+        }
 
         const sessionId = await this.ensureSession();
         const settings = getOpenCodeSettings();
@@ -351,6 +371,10 @@ export class OpenCodeService implements vscode.Disposable {
                 agent: selectedAgent,
                 model: parsedModel,
                 parts,
+            });
+
+            return new Promise<void>((resolve, reject) => {
+                this.pendingPrompts.set(sessionId, { resolve, reject });
             });
         } catch (error) {
             this.clearTimeout();
@@ -429,6 +453,19 @@ export class OpenCodeService implements vscode.Disposable {
             }
             const message = error instanceof Error ? error.message : String(error);
             this.setStatus('error', `Event stream: ${message}`);
+
+            const activeId = this.sessionId;
+            if (activeId && this.activeStream.has(activeId)) {
+                this.activeStream.delete(activeId);
+                this.clearTimeout();
+                this.emitStream({
+                    sessionId: activeId,
+                    text: '',
+                    done: true,
+                    error: `Conexión SSE perdida permanentemente: ${message}`,
+                    statusDetail: 'Error de conexión.'
+                });
+            }
         }
     }
     private async handleEvent(event: ServerEvent): Promise<void> {
@@ -481,6 +518,9 @@ export class OpenCodeService implements vscode.Disposable {
         if (event.type === 'session.idle') {
             const props = event.properties as { sessionID?: string; error?: any } | undefined;
             if (props?.sessionID !== sessionId) {
+                return;
+            }
+            if (!this.activeStream.has(sessionId)) {
                 return;
             }
             const messages = await this.client.listMessages(sessionId);
@@ -694,20 +734,20 @@ export class OpenCodeService implements vscode.Disposable {
                 statusDetail: 'Reintentando petición...'
             });
 
-            // 6. Actualizar el modelo en lastPromptInfo para que reintente con el nuevo
-            this.lastPromptInfo.model = targetModel ? `${targetProvider}::${targetModel}` : undefined;
+            const failoverModel = targetModel ? `${targetProvider}::${targetModel}` : undefined;
             
             // Persistir el nuevo modelo seleccionado en el estado de VS Code para que el dropdown se actualice
-            if (this.lastPromptInfo.model) {
-                this.persistSelectedModel(this.lastPromptInfo.model);
+            if (failoverModel) {
+                this.persistSelectedModel(failoverModel);
             }
 
             await this.sendPrompt(
                 this.lastPromptInfo.text,
                 this.lastPromptInfo.agent,
-                this.lastPromptInfo.model,
+                failoverModel,
                 this.lastPromptInfo.contextParts,
-                this.lastPromptInfo.attachments
+                this.lastPromptInfo.attachments,
+                true // isFailover = true
             );
 
             return true;

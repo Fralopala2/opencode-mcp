@@ -175,16 +175,16 @@ export class HttpOpenCodeClient {
                 break;
             }
             buffer += decoder.decode(value, { stream: true });
-            const chunks = buffer.split('\n\n');
+            const chunks = buffer.split(/\r?\n\r?\n/);
             buffer = chunks.pop() ?? '';
             for (const chunk of chunks) {
                 const dataLine = chunk
-                    .split('\n')
+                    .split(/\r?\n/)
                     .find((l) => l.startsWith('data:'));
                 if (!dataLine) {
                     continue;
                 }
-                const json = dataLine.replace(/^data:\s*/, '');
+                const json = dataLine.replace(/^data:\s*/, '').trim();
                 if (!json || json === '[DONE]') {
                     continue;
                 }
