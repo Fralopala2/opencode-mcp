@@ -6,10 +6,18 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-06-06
+
+### Mejoras y Limpieza
+- Documentada la configuración `opencode.quickActions` en `README.md`.
+- Eliminado archivo de prueba manual redundante `src/testFailover.js` para mantener el repositorio limpio.
+
+## [1.0.2] - 2026-06-06
+
 ### Seguridad
 - Reforzada CSP del webview: restringido `img-src` a solo `data: {{cspSource}}` (eliminados `https:` y `vscode-resource:`).
 - Sanitizada la función `renderBody()` en el frontend para escapar HTML inline code y prevenir XSS.
-- Reemplazado `child_process.exec` por `execFile` en el comando `git diff` para eliminar la依赖encia en shell.
+- Reemplazado `child_process.exec` por `execFile` en el comando `git diff` para eliminar la dependencia en shell.
 - Ruta de `auth.json` ahora configurable vía variable de entorno `OPENCODE_AUTH_PATH`.
 - Eliminado `taskkill /F /IM node.exe` en el failover agent para evitar matar procesos Node.js no relacionados.
 
