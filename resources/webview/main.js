@@ -26,12 +26,24 @@
    let selectedMode = 'auto'; // agent / auto
    let attachments = [];
    let costData = {};
+   let generationInterval = null;
+   let generationStartTime = null;
 
 
 
   function setStatus(state, detail) {
     if (state === 'busy') {
       showTyping(detail);
+      if (!generationInterval) {
+        generationStartTime = Date.now();
+        generationInterval = setInterval(() => {
+          const elapsed = ((Date.now() - generationStartTime) / 1000).toFixed(1);
+          const timerEl = document.getElementById('typingTimer');
+          if (timerEl) {
+            timerEl.textContent = `(${elapsed}s)`;
+          }
+        }, 100);
+      }
       sendBtn.disabled = true;
       inputEl.disabled = true;
        // Switch send button to abort mode
@@ -44,6 +56,14 @@
        if (stopBtnSep) stopBtnSep.style.display = 'block';
 
     } else {
+      if (generationInterval) {
+        clearInterval(generationInterval);
+        generationInterval = null;
+      }
+      const timerEl = document.getElementById('typingTimer');
+      if (timerEl) {
+        timerEl.textContent = '';
+      }
       hideTyping();
       sendBtn.disabled = false;
       inputEl.disabled = false;
@@ -70,7 +90,11 @@
      meta.style.color = 'var(--text-sec)';
      meta.style.marginTop = '6px';
      meta.style.textAlign = 'right';
-     meta.textContent = `Tokens - In: ${metrics.input || 0} | Out: ${metrics.output || 0}`;
+     let timeStr = '';
+     if (generationStartTime) {
+       timeStr = ` | Tiempo: ${((Date.now() - generationStartTime) / 1000).toFixed(1)}s`;
+     }
+     meta.textContent = `Tokens - In: ${metrics.input || 0} | Out: ${metrics.output || 0}${timeStr}`;
      node.appendChild(meta);
    }
 
