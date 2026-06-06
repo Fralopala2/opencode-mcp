@@ -23,3 +23,6 @@ out/
 
 # Ignore plan de ruta temporal
 plan_ruta_api_balancer.md
+
+# Ignore config con llaves maestras
+config/apis.json

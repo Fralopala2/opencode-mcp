@@ -1,0 +1,16 @@
+{
+  "openai": [
+    "sk-proj-...",
+    "sk-proj-..."
+  ],
+  "anthropic": [],
+  "groq": [],
+  "openrouter": [],
+  "huggingface": [],
+  "mistral": [],
+  "xai": [],
+  "deepseek": [],
+  "perplexity": [],
+  "nvidia": [],
+  "meta": []
+}

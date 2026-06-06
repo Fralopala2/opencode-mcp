@@ -2,9 +2,9 @@
   <img src="resources/logo.png" alt="OpenCode Panel Logo" width="300" />
 </div>
 
-# OpenCode Panel (VS Code)
+# OpenCode Panel (VS Code / Antigravity)
 
-Extensión de VS Code que integra un **panel lateral de chat** con tu instancia local de **OpenCode**, permitiendo interactuar con tus **agents**, **skills**, **MCP** y **providers** configurados en `~/.config/opencode/opencode.jsonc`.
+Extensión de VS Code / Antigravity (+ todos los IDE que soporten instalacion via .vsix) que integra un **panel lateral de chat** con tu instancia local de **OpenCode**, permitiendo interactuar con tus **agents**, **skills**, **MCP** y **providers** configurados en `~/.config/opencode/opencode.jsonc`.
 
 Inspirada en [OpenCode UX+](https://marketplace.visualstudio.com/items?itemName=paviko.opencode-ux-plus), pero sin incluir un binario adicional. Utiliza directamente la CLI `opencode` disponible en tu `PATH`.
 
@@ -17,6 +17,7 @@ Inspirada en [OpenCode UX+](https://marketplace.visualstudio.com/items?itemName=
 - **Auto-inicio del servidor** si no está en ejecución.
 - **Soporte para múltiples sesiones** de chat.
 - **Historial persistente**: las sesiones se guardan y asocian automáticamente al workspace (proyecto) actual, manteniéndose entre reinicios.
+- **Gestión de errores detallada**: los mensajes de error de los proveedores (ej. cuota excedida, saldo insuficiente) se parsean y muestran nativamente en el chat.
 - **Adaptador MCP** (`opencode-adapter.mjs`) para acceder a OpenCode desde otros clientes MCP mediante la herramienta `ask_opencode`.
 - **Agente de Failover y Balanceador API** (`FailoverAgent`) para rotar llaves de API automáticamente al detectar fallos o límites de cuota (429).
 
@@ -45,6 +46,15 @@ Inspirada en [OpenCode UX+](https://marketplace.visualstudio.com/items?itemName=
 Si el servidor de OpenCode no está en ejecución y la opción `opencode.autoStartServer` está activada (valor por defecto), la extensión iniciará automáticamente el servidor con `opencode serve` en el puerto configurado.
 
 ## Herramientas y Agentes
+
+Al estar conectado directamente a OpenCode, el panel hereda todas sus herramientas (Tools/MCP) permitiendo al LLM interactuar con tu entorno:
+
+### Herramientas Nativas (Tools)
+- **Sistema y archivos**: Ejecución de comandos (`bash`), búsqueda (`glob`, `grep`), lectura (`read`), edición (`edit`) y escritura (`write`).
+- **Memoria persistente**: Gestión de contexto a largo plazo (`mem_save`, `mem_search`, `mem_context`, `mem_update`).
+- **Tareas complejas**: Delegación de subtareas (`task`) y listas de TODOs (`todowrite`).
+- **Web y UI**: Acceso a internet (`webfetch`) y preguntas interactivas (`question`).
+- **Skills**: Habilidades especializadas personalizadas (`skill`).
 
 ### Adaptador MCP (OpenCode MCP Server)
 El archivo `opencode-adapter.mjs` funciona como un servidor [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) que permite a clientes MCP comunicarse con tu servidor OpenCode local.
