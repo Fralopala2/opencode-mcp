@@ -271,6 +271,7 @@ export class OpenCodeService implements vscode.Disposable {
 
     async abortSession(silent: boolean = false): Promise<void> {
         this.clearTimeout();
+        this.lastPromptInfo = undefined;
         if (!this.client || !this.sessionId) {
             return;
         }
@@ -709,14 +710,16 @@ export class OpenCodeService implements vscode.Disposable {
 
             // 4. Mostrar mensaje de transición al usuario en el chat
             const displayModel = targetModel ? `${targetProvider}::${targetModel}` : targetProvider;
+            if (!this.lastPromptInfo) return false;
             this.emitStream({ 
                 sessionId: this.sessionId, 
                 text: `\n> ⚠️ **Error detectado**: ${errMsg}\n> 🔄 **Cambiando al proveedor/clave de respaldo**: \`${displayModel}\`...\n`, 
                 done: false,
                 statusDetail: 'Cambiando a proveedor de respaldo...'
             });
-
+ 
             // 5. Reiniciar/Reconectar para cargar la nueva clave
+            if (!this.lastPromptInfo) return false;
             this.emitStream({ 
                 sessionId: this.sessionId, 
                 text: `\n> 🔄 **Reiniciando servidor local de OpenCode...**\n`, 
@@ -724,23 +727,26 @@ export class OpenCodeService implements vscode.Disposable {
                 statusDetail: 'Reiniciando OpenCode...'
             });
             await this.reconnect();
-
+ 
+            if (!this.lastPromptInfo) return false;
             await new Promise(r => setTimeout(r, 1500));
-
+ 
+            if (!this.lastPromptInfo) return false;
             this.emitStream({ 
                 sessionId: this.sessionId, 
                 text: `\n> 🚀 **Reintentando consulta...**\n`, 
                 done: false,
                 statusDetail: 'Reintentando petición...'
             });
-
+ 
             const failoverModel = targetModel ? `${targetProvider}::${targetModel}` : undefined;
             
             // Persistir el nuevo modelo seleccionado en el estado de VS Code para que el dropdown se actualice
             if (failoverModel) {
                 this.persistSelectedModel(failoverModel);
             }
-
+ 
+            if (!this.lastPromptInfo) return false;
             await this.sendPrompt(
                 this.lastPromptInfo.text,
                 this.lastPromptInfo.agent,
@@ -749,7 +755,7 @@ export class OpenCodeService implements vscode.Disposable {
                 this.lastPromptInfo.attachments,
                 true // isFailover = true
             );
-
+ 
             return true;
         } catch (e) {
             console.error('[Failover]', e);

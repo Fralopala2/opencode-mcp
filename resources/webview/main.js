@@ -12,6 +12,8 @@
   const dropOverlay = document.getElementById('dropOverlay');
   const modePill = document.getElementById('modePill');
   const contextBar = document.getElementById('contextBar');
+  const stopBtn    = document.getElementById('stopBtn');
+  const stopBtnSep = document.getElementById('stopBtnSep');
 
   // Seleccionamos los botones de las herramientas (usaremos sus titles o indices, mejor añadimos un event listener al botón de adjuntar por su tooltip)
   const attachBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Adjuntar'));
@@ -38,6 +40,8 @@
        sendBtn.classList.add('abort');
        sendBtn.onclick = () => { vscode.postMessage({ type: 'abort' }); };
        sendBtn.disabled = false;
+       if (stopBtn) stopBtn.style.display = 'inline-flex';
+       if (stopBtnSep) stopBtnSep.style.display = 'block';
 
     } else {
       hideTyping();
@@ -49,6 +53,8 @@
        sendBtn.classList.remove('abort');
        sendBtn.onclick = sendMessage;
        sendBtn.disabled = false;
+       if (stopBtn) stopBtn.style.display = 'none';
+       if (stopBtnSep) stopBtnSep.style.display = 'none';
 
       if (state === 'idle') inputEl.focus();
     }
@@ -407,6 +413,11 @@
         document.body.classList.toggle('cost-panel-open');
       });
     }
+     if (stopBtn) {
+       stopBtn.addEventListener('click', () => {
+         vscode.postMessage({ type: 'abort' });
+       });
+     }
   document.getElementById('clearChatBtn').addEventListener('click', () => {
     clearChat();
   });
