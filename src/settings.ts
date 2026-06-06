@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as os from 'os';
 
 export interface OpenCodeSettings {
     serverUrl: string;
@@ -25,6 +27,10 @@ export function getOpenCodeSettings(): OpenCodeSettings {
         autoApprovePermissions: config.get<boolean>('autoApprovePermissions', false),
         opencodeBin: config.get<string>('bin', ''),
     };
+}
+
+export function getAuthPath(): string {
+    return process.env.OPENCODE_AUTH_PATH || path.join(os.homedir(), '.local', 'share', 'opencode', 'auth.json');
 }
 
 export function getWorkspaceDirectory(): string | undefined {

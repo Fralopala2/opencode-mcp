@@ -79,7 +79,7 @@
     return text
       .replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) =>
         `<pre><code>${escHtml(code.trim())}</code></pre>`)
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/`([^`]+)`/g, (_, code) => `<code>${escHtml(code)}</code>`)
       .replace(/\n/g, '<br>');
   }
 

@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { getAuthPath } from './settings';
 import { HttpOpenCodeClient } from './httpClient';
 import { partsToDisplayText, type PromptPart } from './parts';
 import { startOpencodeServer, type ManagedServer } from './serverProcess';
@@ -483,7 +484,7 @@ export class OpenCodeService implements vscode.Disposable {
             const config = JSON.parse(configContent);
 
             // 1. Obtener la clave activa actual desde auth.json
-            const authPath = path.join(os.homedir(), '.local', 'share', 'opencode', 'auth.json');
+            const authPath = getAuthPath();
             let activeKey: string | undefined;
             if (fs.existsSync(authPath)) {
                 try {

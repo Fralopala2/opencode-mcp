@@ -25,7 +25,7 @@ class FailoverAgent {
       const keys = this.config[currentProvider] || [];
       
       // 1. Obtener la clave activa actual desde auth.json
-      const authPath = path.join(os.homedir(), '.local', 'share', 'opencode', 'auth.json');
+      const authPath = process.env.OPENCODE_AUTH_PATH || path.join(os.homedir(), '.local', 'share', 'opencode', 'auth.json');
       let activeKey;
       if (fs.existsSync(authPath)) {
         try {
@@ -150,7 +150,6 @@ class FailoverAgent {
           try {
             if (process.platform === 'win32') {
               await execPromise('taskkill /F /IM opencode.exe').catch(() => {});
-              await execPromise('taskkill /F /IM node.exe /FI "WINDOWTITLE eq opencode*"').catch(() => {});
             } else {
               await execPromise('pkill -f "opencode serve"').catch(() => {});
             }

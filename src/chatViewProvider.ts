@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { ContextAttachments } from './contextAttachments';
 import { contextLabel, partsToDisplayText } from './parts';
 import { OpenCodeService } from './opencodeService';
@@ -303,7 +303,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             case 'gitDiff': {
                 const cwd = getWorkspaceDirectory();
                 if (cwd) {
-                    exec('git diff', { cwd }, (err, stdout, stderr) => {
+                    execFile('git', ['diff'], { cwd }, (err, stdout, stderr) => {
                         if (stdout) {
                             this.contextAttachments.addPart({
                                 type: 'text',
