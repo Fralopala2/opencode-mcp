@@ -32,7 +32,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                          const model = this.service.getSelectedModel() || 'default';
                          const costDataPath = path.join(this.extensionUri.fsPath, 'costData.json');
                          
-                         let costData = {};
+                         let costData: Record<string, any> = {};
                          try {
                              if (fs.existsSync(costDataPath)) {
                                  const data = fs.readFileSync(costDataPath, 'utf-8');
@@ -141,7 +141,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 }
             }
 
-                 let costData = {};
+                 let costData: Record<string, any> = {};
                  try {
                      const costDataPath = path.join(this.extensionUri.fsPath, 'costData.json');
                      if (fs.existsSync(costDataPath)) {
