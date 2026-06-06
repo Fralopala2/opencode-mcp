@@ -117,6 +117,7 @@ La extensión ofrece las siguientes opciones de configuración:
 | `opencode.defaultAgent` | `""` | Nombre del agente por defecto (según tu configuración de OpenCode). |
 | `opencode.autoApprovePermissions` | `false` | Aprobar automáticamente permisos para comandos bash o edición de archivos. |
 | `opencode.bin` | `""` | Ruta al ejecutable de OpenCode (vacío = auto-detección en Windows/npm). |
+| `opencode.quickActions` | `[...]` | Acciones rápidas personalizadas en la pantalla de bienvenida. |
 
 ## Conexión con OpenCode LOCAL
 
