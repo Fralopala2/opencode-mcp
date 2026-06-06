@@ -18,6 +18,7 @@ Extensión de VS Code / Antigravity (+ todos los IDE que soporten instalacion vi
 - **Gestión de errores detallada**: los mensajes de error de los proveedores (ej. cuota excedida, saldo insuficiente) se parsean y muestran nativamente en el chat.
 - **Adaptador MCP** (`opencode-adapter.mjs`) para acceder a OpenCode desde otros clientes MCP mediante la herramienta `ask_opencode`.
 - **Agente de Failover y Balanceador API** (`FailoverAgent`) para rotar llaves de API automáticamente al detectar fallos o límites de cuota (429).
+- **Panel de costos acumulativos**: seguimiento en tiempo real del costo por sesión agrupado por fecha y modelo, con soporte multi-moneda (USD/EUR) y persistencia en `costData.json`.
 - **Seguridad reforzada**: CSP restrictiva en el webview, sanitización de salida HTML, comandos sin shell (`execFile`), y rutas de auth configurables vía `OPENCODE_AUTH_PATH`.
 
 ## Requisitos
@@ -77,6 +78,30 @@ Puedes añadir contenido al contexto de la conversación para que OpenCode lo te
 | Adjuntar carpeta | — | *(Desde el botón en la interfaz de chat)* |
 
 También puedes acceder a estas opciones desde el **menú contextual** del editor o del explorador de archivos.
+
+## Panel de Costos Acumulativos
+
+El panel de costos muestra el gasto acumulado de tus interacciones con los LLMs, agrupado por fecha y modelo.
+
+### Características
+- **Cálculo automático**: cada respuesta del asistente registra los tokens de entrada y salida y calcula el costo según el modelo utilizado.
+- **Agrupación por fecha y modelo**: los costos se organizan por día y por modelo de LLM.
+- **Multi-moneda**: muestra el costo en USD y EUR (tasa fija EUR = USD × 0.92).
+- **Persistencia**: los datos se guardan en `costData.json` en la raíz del proyecto y se cargan automáticamente al abrir el chat.
+- **Panel ocultable**: botón de mostrar/ocultar en la barra superior del chat.
+
+### Precios por modelo
+
+| Modelo | Precio Input (por 1M tokens) | Precio Output (por 1M tokens) |
+|--------|------------------------------|-------------------------------|
+| `mistral-medium-latest` | $2.00 | $6.00 |
+| Default (otros) | $2.00 | $6.00 |
+
+### Funcionamiento
+1. Al abrir el chat, el panel carga los costos históricos desde `costData.json`.
+2. Cada respuesta del asistente acumula el costo automáticamente (tanto en el frontend como en el backend).
+3. El backend persiste los costos en `costData.json` tras cada interacción.
+4. Puedes ocultar/mostrar el panel con el botón `$` en la barra superior.
 
 ## Configuración
 
@@ -159,6 +184,11 @@ Para contribuir al desarrollo de la extensión:
   - `agent/failoverAgent.js`: Lógica de balanceo de API y rotación de keys.
   - `opencode-adapter.mjs`: Servidor MCP que expone OpenCode.
   - `config/apis.json`: Configuración de llaves maestras para Failover.
+  - `costData.json`: Archivo de persistencia de costos acumulativos (generado automáticamente).
+  - `resources/webview/`: Contiene los assets del frontend del chat.
+    - `index.html`: Estructura HTML del panel de chat (incluye el panel de costos).
+    - `main.js`: Lógica del frontend (manejo de mensajes, renderizado, cálculo de costos).
+    - `styles.css`: Estilos del panel de chat.
   - `package.json`: Configuración del proyecto y dependencias.
 
 ## Solución de problemas

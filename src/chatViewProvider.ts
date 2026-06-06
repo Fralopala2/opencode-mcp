@@ -514,6 +514,20 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     }
                 }
                 break;
+            case 'loadCostData': {
+                let costData: Record<string, any> = {};
+                try {
+                    const costDataPath = path.join(this.extensionUri.fsPath, 'costData.json');
+                    if (fs.existsSync(costDataPath)) {
+                        const data = fs.readFileSync(costDataPath, 'utf-8');
+                        costData = JSON.parse(data);
+                    }
+                } catch (error) {
+                    console.error('Error loading cost data:', error);
+                }
+                this.post({ type: 'costDataUpdate', costData });
+                break;
+            }
             default:
                 break;
         }

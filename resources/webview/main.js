@@ -90,7 +90,9 @@
          modelEntry.className = 'cost-model';
 
          const modelName = document.createElement('span');
+         modelName.className = 'cost-model-name';
          modelName.textContent = model;
+         modelName.title = model;
 
          const modelCost = document.createElement('span');
          modelCost.className = 'cost-amount';
