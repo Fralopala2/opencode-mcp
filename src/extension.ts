@@ -7,7 +7,7 @@ let service: OpenCodeService | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     service = new OpenCodeService();
-    chatProvider = new ChatViewProvider(context.extensionUri, service);
+    chatProvider = new ChatViewProvider(context, service);
 
     context.subscriptions.push(
         service,

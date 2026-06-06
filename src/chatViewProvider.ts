@@ -16,7 +16,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     private selectedAgent = '';
 
     constructor(
-        private readonly extensionUri: vscode.Uri,
+        private readonly context: vscode.ExtensionContext,
         private readonly service: OpenCodeService
     ) {
         service.onStream((update) => {
@@ -26,21 +26,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 } else {
                      this.post({ type: 'assistantDone', text: update.text, metrics: update.metrics });
                      
-                     // Actualizar costos en el archivo
+                     // Actualizar costos en globalState
                      if (update.metrics) {
                          const today = new Date().toISOString().split('T')[0];
                          const model = this.service.getSelectedModel() || 'default';
-                         const costDataPath = path.join(this.extensionUri.fsPath, 'costData.json');
                          
-                         let costData: Record<string, any> = {};
-                         try {
-                             if (fs.existsSync(costDataPath)) {
-                                 const data = fs.readFileSync(costDataPath, 'utf-8');
-                                 costData = JSON.parse(data);
-                             }
-                         } catch (error) {
-                             console.error('Error loading cost data:', error);
-                         }
+                         let costData: Record<string, any> = this.context.globalState.get('costData') || {};
                          
                          const cost = this.calculateCost(update.metrics.input, update.metrics.output, model);
                          
@@ -55,7 +46,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                          costData[today][model].usd += cost.usd;
                          costData[today][model].eur += cost.eur;
                          
-                         fs.writeFileSync(costDataPath, JSON.stringify(costData, null, 2));
+                         this.context.globalState.update('costData', costData);
                      }
                 }
                 this.post({ type: 'status', state: 'idle' });
@@ -81,7 +72,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         this.view = webviewView;
         webviewView.webview.options = {
             enableScripts: true,
-            localResourceRoots: [this.extensionUri],
+            localResourceRoots: [this.context.extensionUri],
         };
         webviewView.webview.html = this.getHtml(webviewView.webview);
 
@@ -141,16 +132,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 }
             }
 
-                 let costData: Record<string, any> = {};
-                 try {
-                     const costDataPath = path.join(this.extensionUri.fsPath, 'costData.json');
-                     if (fs.existsSync(costDataPath)) {
-                         const data = fs.readFileSync(costDataPath, 'utf-8');
-                         costData = JSON.parse(data);
-                     }
-                 } catch (error) {
-                     console.error('Error loading cost data:', error);
-                 }
+                 let costData: Record<string, any> = this.context.globalState.get('costData') || {};
 
                  this.post({
                      type: 'init',
@@ -515,16 +497,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 }
                 break;
             case 'loadCostData': {
-                let costData: Record<string, any> = {};
-                try {
-                    const costDataPath = path.join(this.extensionUri.fsPath, 'costData.json');
-                    if (fs.existsSync(costDataPath)) {
-                        const data = fs.readFileSync(costDataPath, 'utf-8');
-                        costData = JSON.parse(data);
-                    }
-                } catch (error) {
-                    console.error('Error loading cost data:', error);
-                }
+                let costData: Record<string, any> = this.context.globalState.get('costData') || {};
                 this.post({ type: 'costDataUpdate', costData });
                 break;
             }
@@ -542,19 +515,19 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
     private getHtml(webview: vscode.Webview): string {
         const htmlPath = path.join(
-            this.extensionUri.fsPath,
+            this.context.extensionUri.fsPath,
             'resources',
             'webview',
             'index.html'
         );
         const scriptPath = path.join(
-            this.extensionUri.fsPath,
+            this.context.extensionUri.fsPath,
             'resources',
             'webview',
             'main.js'
         );
         const logoPath = path.join(
-            this.extensionUri.fsPath,
+            this.context.extensionUri.fsPath,
             'resources',
             'logo.svg'
         );
