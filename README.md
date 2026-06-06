@@ -1,8 +1,7 @@
 <div align="center">
-
-![OpenCode Panel Logo](resources/logo.png)
-
+  <img src="resources/logo.png" alt="OpenCode Panel Logo" width="300" />
 </div>
+
 # OpenCode Panel (VS Code / Antigravity)
 
 Extensión de VS Code / Antigravity (+ todos los IDE que soporten instalacion via .vsix) que integra un **panel lateral de chat** con tu instancia local de **OpenCode**, permitiendo interactuar con tus **agents**, **skills**, **MCP** y **providers** configurados en `~/.config/opencode/opencode.jsonc`.
