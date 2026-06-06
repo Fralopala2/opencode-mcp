@@ -388,21 +388,12 @@
      });
    }
 
-   const toggleCostPanelBtn = document.getElementById('toggleCostPanelBtn');
-   if (toggleCostPanelBtn) {
-     toggleCostPanelBtn.addEventListener('click', () => {
-       const costPanel = document.getElementById('costPanel');
-       if (costPanel) {
-         if (costPanel.style.display === 'none') {
-           costPanel.style.display = 'block';
-           messagesEl.style.marginRight = 'var(--cost-panel-width)';
-         } else {
-           costPanel.style.display = 'none';
-           messagesEl.style.marginRight = '0';
-         }
-       }
-     });
-   }
+    const toggleCostPanelBtn = document.getElementById('toggleCostPanelBtn');
+    if (toggleCostPanelBtn) {
+      toggleCostPanelBtn.addEventListener('click', () => {
+        document.body.classList.toggle('cost-panel-open');
+      });
+    }
   document.getElementById('clearChatBtn').addEventListener('click', () => {
     clearChat();
   });

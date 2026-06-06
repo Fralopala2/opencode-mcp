@@ -20,10 +20,31 @@
       font-family: var(--font-body);
       height: 100%;
       position: fixed;
-      right: 0;
+      right: calc(-1 * var(--cost-panel-width) - 20px);
       top: 0;
       overflow-y: auto;
       z-index: 10;
+      transition: right 0.2s ease;
+    }
+
+    body.cost-panel-open .cost-panel {
+      right: 0;
+    }
+
+    body.cost-panel-open .messages {
+      margin-right: var(--cost-panel-width);
+    }
+
+    body.cost-panel-open .context-bar {
+      margin-right: var(--cost-panel-width);
+    }
+
+    body.cost-panel-open .input-area {
+      margin-right: var(--cost-panel-width);
+    }
+
+    body.cost-panel-open .dropdown {
+      right: calc(var(--cost-panel-width) + 12px);
     }
 
     .cost-header {
@@ -116,6 +137,11 @@
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
     gap: 8px;
+    transition: padding-right 0.2s ease;
+  }
+
+  body.cost-panel-open .topbar {
+    padding-right: calc(var(--cost-panel-width) + 12px);
   }
 
   .topbar-left {
@@ -260,6 +286,7 @@
     z-index: 100;
     overflow: hidden;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    transition: right 0.2s ease;
   }
 
   .dropdown.open {
@@ -380,6 +407,7 @@
     flex-shrink: 0;
     overflow-x: auto;
     scrollbar-width: none;
+    transition: margin-right 0.2s ease;
   }
 
   .context-bar::-webkit-scrollbar { display: none; }
@@ -724,6 +752,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    transition: margin-right 0.2s ease;
   }
 
   .input-wrapper {
@@ -1053,7 +1082,7 @@
    </div>
 
    <!-- Panel de Costos -->
-   <div id="costPanel" class="cost-panel" style="display: none;">
+   <div id="costPanel" class="cost-panel">
     <div class="cost-header">
       <h3>Costos Acumulativos</h3>
     </div>
