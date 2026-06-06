@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="resources/logo.png" alt="OpenCode Panel Logo" width="300" />
+</div>
+
 # OpenCode Panel (VS Code)
 
 Extensión de VS Code que integra un **panel lateral de chat** con tu instancia local de **OpenCode**, permitiendo interactuar con tus **agents**, **skills**, **MCP** y **providers** configurados en `~/.config/opencode/opencode.jsonc`.
@@ -12,10 +16,14 @@ Inspirada en [OpenCode UX+](https://marketplace.visualstudio.com/items?itemName=
 - **Autenticación básica** para servidores protegidos.
 - **Auto-inicio del servidor** si no está en ejecución.
 - **Soporte para múltiples sesiones** de chat.
+- **Historial persistente**: las sesiones se guardan y asocian automáticamente al workspace (proyecto) actual, manteniéndose entre reinicios.
+- **Adaptador MCP** (`opencode-adapter.mjs`) para acceder a OpenCode desde otros clientes MCP mediante la herramienta `ask_opencode`.
+- **Agente de Failover y Balanceador API** (`FailoverAgent`) para rotar llaves de API automáticamente al detectar fallos o límites de cuota (429).
 
 ## Requisitos
 
 - [OpenCode CLI](https://opencode.ai/) instalado y disponible en el `PATH`.
+- Node.js (para la ejecución del adaptador MCP y scripts de Failover).
 - VS Code 1.85 o superior.
 - Carpeta de workspace abierta (recomendado).
 
@@ -36,15 +44,28 @@ Inspirada en [OpenCode UX+](https://marketplace.visualstudio.com/items?itemName=
 
 Si el servidor de OpenCode no está en ejecución y la opción `opencode.autoStartServer` está activada (valor por defecto), la extensión iniciará automáticamente el servidor con `opencode serve` en el puerto configurado.
 
+## Herramientas y Agentes
+
+### Adaptador MCP (OpenCode MCP Server)
+El archivo `opencode-adapter.mjs` funciona como un servidor [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) que permite a clientes MCP comunicarse con tu servidor OpenCode local.
+- Expone la tool `ask_opencode` para el envío de consultas de manera estructurada.
+- Se comunica por `stdio`, arranca automáticamente `opencode serve` si no está encendido, y devuelve respuestas de los agentes y herramientas de OpenCode.
+
+### Agente Failover y Balanceo de API (`FailoverAgent`)
+Ubicado en `src/agent/failoverAgent.js`, es una solución local para garantizar resiliencia en llamadas al LLM.
+- **Configuración:** Define listas de llaves API en `config/apis.json` por proveedor (ej. `openai`).
+- **Rotación Automática:** Si la API devuelve error HTTP 429 (Rate Limit) o > 500, el agente cambia dinámicamente a la siguiente llave usando el comando `opencode /connect <provider> --key <next-key>` y reintenta la petición.
+
 ## Gestión de contexto
 
-Puedes añadir contenido al contexto de la conversación para que OpenCode lo tenga en cuenta al responder:
+Puedes añadir contenido al contexto de la conversación para que OpenCode lo tenga en cuenta al responder utilizando los botones de la interfaz del chat o los siguientes atajos:
 
 | Acción | Atajo | Comando |
 |--------|-------|---------|
 | Añadir archivo actual | `Ctrl+Alt+Shift+F` | OpenCode: Añadir archivo actual al contexto |
 | Añadir selección | `Ctrl+Alt+Shift+S` | OpenCode: Añadir selección al contexto |
 | Añadir todos los abiertos | — | OpenCode: Añadir archivos abiertos al contexto |
+| Adjuntar carpeta | — | *(Desde el botón en la interfaz de chat)* |
 
 También puedes acceder a estas opciones desde el **menú contextual** del editor o del explorador de archivos.
 
@@ -63,9 +84,9 @@ La extensión ofrece las siguientes opciones de configuración:
 | `opencode.autoApprovePermissions` | `false` | Aprobar automáticamente permisos para comandos bash o edición de archivos. |
 | `opencode.bin` | `""` | Ruta al ejecutable de OpenCode (vacío = auto-detección en Windows/npm). |
 
-## Conexión con OpenCode
+## Conexión con OpenCode LOCAL
 
-La extensión se comunica con el servidor de OpenCode a través de su [HTTP API](https://opencode.ai/docs/server/):
+La extensión se comunica con tu **instancia local de OpenCode** (que se inicia con `opencode serve`) a través de su HTTP API local (por defecto en `http://127.0.0.1:4096`):
 
 - `GET /global/health`: Comprueba el estado del servidor.
 - `POST /session`: Inicia una sesión de chat por workspace.
@@ -80,8 +101,8 @@ Los **MCP** (Micro-Core Protocols) se gestionan directamente desde tu configurac
 | Comando | Descripción |
 |--------|-------------|
 | `opencode.ask` | Abre el panel de chat de OpenCode. |
-| `opencode.reconnect` | Reconocta al servidor de OpenCode. |
-| `opencode.newSession` | Inicia una nueva sesión de chat. |
+| `opencode.reconnect` | Reconecta al servidor de OpenCode. |
+| `opencode.newSession` | Inicia una nueva sesión de chat (equivalente al botón **Limpiar chat** de la interfaz). |
 | `opencode.addFileToContext` | Añade el archivo actual al contexto. |
 | `opencode.addSelectionToContext` | Añade la selección actual al contexto. |
 | `opencode.addOpenFilesToContext` | Añade todos los archivos abiertos al contexto. |
@@ -126,8 +147,10 @@ Para contribuir al desarrollo de la extensión:
   - `contextAttachments.ts`: Lógica para manejar el contexto de archivos y selecciones.
   - `settings.ts`: Gestión de la configuración de la extensión.
   - `types.ts`: Definiciones de tipos TypeScript.
-
-- **`package.json`**: Configuración del proyecto y dependencias.
+  - `agent/failoverAgent.js`: Lógica de balanceo de API y rotación de keys.
+  - `opencode-adapter.mjs`: Servidor MCP que expone OpenCode.
+  - `config/apis.json`: Configuración de llaves maestras para Failover.
+  - `package.json`: Configuración del proyecto y dependencias.
 
 ## Solución de problemas
 
