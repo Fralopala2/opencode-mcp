@@ -10,83 +10,88 @@
     --cost-panel-width: 250px;
    }
 
-   /* Estilos para el panel de costos */
-   .cost-panel {
-     width: var(--cost-panel-width);
-     background-color: #1e1e1e;
-     border-left: 1px solid #333;
-     padding: 10px;
-     color: #ccc;
-     font-family: Arial, sans-serif;
-     height: 100%;
-     position: fixed;
-     right: 0;
-     top: 0;
-     overflow-y: auto;
-     z-index: 10;
-   }
+    /* Estilos para el panel de costos */
+    .cost-panel {
+      width: var(--cost-panel-width);
+      background-color: var(--bg-panel);
+      border-left: 1px solid var(--border);
+      padding: 12px;
+      color: var(--text-sec);
+      font-family: var(--font-body);
+      height: 100%;
+      position: fixed;
+      right: 0;
+      top: 0;
+      overflow-y: auto;
+      z-index: 10;
+    }
 
-   .cost-header {
-     text-align: center;
-     margin-bottom: 15px;
-     color: #fff;
-   }
+    .cost-header {
+      text-align: center;
+      margin-bottom: 15px;
+      color: var(--text-pri);
+    }
 
-   .cost-content {
-     display: flex;
-     flex-direction: column;
-     gap: 10px;
-   }
+    .cost-content {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
 
-   .cost-entry {
-     padding: 8px;
-     border-radius: 4px;
-     background-color: #252526;
-   }
+    .cost-entry {
+      padding: 8px;
+      border-radius: var(--radius);
+      background-color: var(--bg-input);
+      border: 1px solid var(--border);
+    }
 
-   .cost-date {
-     font-weight: bold;
-     margin-bottom: 5px;
-     color: #9cdcfe;
-   }
+    .cost-date {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: var(--tag-fg);
+      font-family: var(--font-ui);
+    }
 
-   .cost-model {
-     font-size: 12px;
-     color: #d4d4d4;
-     display: flex;
-     justify-content: space-between;
-   }
+    .cost-model {
+      font-size: 11px;
+      color: var(--text-sec);
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-ui);
+    }
 
-   .cost-amount {
-     text-align: right;
-     font-weight: bold;
-     color: #ce9178;
-   }
+    .cost-amount {
+      text-align: right;
+      font-weight: bold;
+      color: var(--text-pri);
+    }
 
    /* Ajustar el área de mensajes para dejar espacio al panel de costos */
    .messages {
-     margin-right: var(--cost-panel-width);
+     margin-right: 0;
+     transition: margin-right 0.2s ease;
    }
    
-    --bg-base:      #0d0d0d;
-    --bg-panel:     #141414;
-    --bg-input:     #1a1a1a;
-    --bg-msg-ai:    #181818;
-    --bg-msg-user:  #1f2a1f;
-    --border:       #2a2a2a;
-    --border-sel:   #3a7a3a;
-    --accent:       #4caf50;
-    --accent-dim:   #2e6b31;
-    --text-pri:     #e8e8e8;
-    --text-sec:     #888;
-    --text-muted:   #555;
-    --tag-bg:       #1a2e1a;
-    --tag-fg:       #6abf6a;
-    --font-ui:      'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-    --font-body:    -apple-system, 'Segoe UI', sans-serif;
-    --radius:       6px;
-    --radius-lg:    10px;
-  }
+   :root {
+     --bg-base:      #0d0d0d;
+     --bg-panel:     #141414;
+     --bg-input:     #1a1a1a;
+     --bg-msg-ai:    #181818;
+     --bg-msg-user:  #1f2a1f;
+     --border:       #2a2a2a;
+     --border-sel:   #3a7a3a;
+     --accent:       #4caf50;
+     --accent-dim:   #2e6b31;
+     --text-pri:     #e8e8e8;
+     --text-sec:     #888;
+     --text-muted:   #555;
+     --tag-bg:       #1a2e1a;
+     --tag-fg:       #6abf6a;
+     --font-ui:      'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+     --font-body:    -apple-system, 'Segoe UI', sans-serif;
+     --radius:       6px;
+     --radius-lg:    10px;
+   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 

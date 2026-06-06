@@ -2,7 +2,7 @@
   "name": "opencode-mcp-vscode",
   "displayName": "OpenCode Panel",
   "description": "Panel lateral de chat conectado a tu OpenCode local (agents, skills, MCP)",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "publisher": "local",
   "repository": {
     "type": "git",
@@ -115,11 +115,20 @@
           "items": {
             "type": "object",
             "properties": {
-              "label": { "type": "string" },
-              "text": { "type": "string" },
-              "icon": { "type": "string" }
+              "label": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              }
             },
-            "required": ["label", "text"]
+            "required": [
+              "label",
+              "text"
+            ]
           },
           "description": "Acciones rápidas personalizadas en la pantalla de bienvenida."
         }
