@@ -51,7 +51,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 }
                 this.post({ type: 'status', state: 'idle' });
             } else {
-                this.post({ type: 'assistantStream', text: update.text });
+                this.post({ type: 'assistantStream', text: update.text, statusDetail: update.statusDetail });
             }
         });
 

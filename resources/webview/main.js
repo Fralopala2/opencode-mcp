@@ -29,7 +29,7 @@
 
   function setStatus(state, detail) {
     if (state === 'busy') {
-      showTyping();
+      showTyping(detail);
       sendBtn.disabled = true;
       inputEl.disabled = true;
        // Switch send button to abort mode
@@ -111,7 +111,11 @@
      });
    }
 
-  function showTyping() {
+  function showTyping(detail) {
+    const typingTextEl = document.getElementById('typingText');
+    if (typingTextEl) {
+      typingTextEl.textContent = detail || 'Pensando...';
+    }
     typingEl.classList.add('visible');
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
@@ -145,6 +149,13 @@
       return `<div class="tool-status error">
         <span class="tool-icon-error">✗</span>
         <span>Error en: <strong>${tool}</strong></span>
+      </div>`;
+    });
+
+    html = html.replace(/[>&gt;]\s*🔐\s*Esperando permiso:\s*<code>([^<]+)<\/code>\.\.\./g, (_, permTitle) => {
+      return `<div class="tool-status error" style="border-color: var(--accent-dim); color: var(--text-pri);">
+        <span class="tool-spinner" style="border-top-color: #ffb300; border-right-color: #ffb300;"></span>
+        <span>Esperando permiso: <strong>${permTitle}</strong> (revisa la notificación en la esquina inferior derecha)</span>
       </div>`;
     });
 
@@ -756,6 +767,12 @@
         break;
       case 'assistantStream':
         updateStream(msg.text);
+        if (msg.statusDetail) {
+          const typingTextEl = document.getElementById('typingText');
+          if (typingTextEl) {
+            typingTextEl.textContent = msg.statusDetail;
+          }
+        }
         break;
        case 'assistantDone':
          finishStream(msg.text, msg.metrics);

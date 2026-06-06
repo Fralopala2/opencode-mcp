@@ -21,6 +21,7 @@ export interface StreamUpdate {
     done: boolean;
     error?: string;
     metrics?: { input: number; output: number };
+    statusDetail?: string;
 }
 
 export class OpenCodeService implements vscode.Disposable {
@@ -65,12 +66,15 @@ export class OpenCodeService implements vscode.Disposable {
     }
 
     private async handleTimeout(sessionId: string): Promise<void> {
-        await this.abortSession(true);
+        this.abortSession(true).catch(err => {
+            console.error('[Timeout] Error al abortar la sesión:', err);
+        });
         this.emitStream({
             sessionId,
-            text: '',
+            text: this.activeStream.get(sessionId) ?? '',
             done: true,
-            error: 'La petición tardó demasiado y fue cancelada automáticamente (timeout de 3m).'
+            error: 'La petición tardó demasiado y fue cancelada automáticamente (timeout de 3m).',
+            statusDetail: 'Timeout de 3 minutos alcanzado.'
         });
     }
 
@@ -337,6 +341,12 @@ export class OpenCodeService implements vscode.Disposable {
 
         try {
             this.resetTimeout(sessionId);
+            this.emitStream({
+                sessionId,
+                text: '',
+                done: false,
+                statusDetail: 'Enviando petición...'
+            });
             await this.client.promptAsync(sessionId, {
                 agent: selectedAgent,
                 model: parsedModel,
@@ -445,7 +455,7 @@ export class OpenCodeService implements vscode.Disposable {
                         ? prev + props.delta
                         : (props.part.text ?? prev);
                 this.activeStream.set(sessionId, next);
-                this.emitStream({ sessionId, text: next, done: false });
+                this.emitStream({ sessionId, text: next, done: false, statusDetail: 'Generando respuesta...' });
             } else if (props.part.type === 'call') {
                 const toolName = props.part.tool || 'herramienta';
                 const prev = this.activeStream.get(sessionId) ?? '';
@@ -453,7 +463,7 @@ export class OpenCodeService implements vscode.Disposable {
                 if (!prev.includes(indicator)) {
                     const next = prev + indicator;
                     this.activeStream.set(sessionId, next);
-                    this.emitStream({ sessionId, text: next, done: false });
+                    this.emitStream({ sessionId, text: next, done: false, statusDetail: `Ejecutando ${toolName}...` });
                 }
             } else if (props.part.type === 'tool') {
                 const toolName = props.part.tool || 'herramienta';
@@ -463,7 +473,7 @@ export class OpenCodeService implements vscode.Disposable {
                 if (!prev.includes(indicator)) {
                     const next = prev + indicator;
                     this.activeStream.set(sessionId, next);
-                    this.emitStream({ sessionId, text: next, done: false });
+                    this.emitStream({ sessionId, text: next, done: false, statusDetail: `Herramienta ${toolName} completada.` });
                 }
             }
         }
@@ -494,13 +504,23 @@ export class OpenCodeService implements vscode.Disposable {
                     return;
                 }
                 
-                this.emitStream({ sessionId, text: '', done: true, error: errMsg });
+                this.emitStream({ sessionId, text: '', done: true, error: errMsg, statusDetail: 'Finalizado con error.' });
             } else {
-                this.emitStream({ sessionId, text, done: true, metrics: lastAssistant?.info?.tokens });
+                this.emitStream({ sessionId, text, done: true, metrics: lastAssistant?.info?.tokens, statusDetail: 'Listo.' });
             }
         }
 
         if (event.type === 'permission.updated') {
+            const perm = event.properties as { id: string; sessionID: string; title: string } | undefined;
+            if (perm && perm.sessionID === sessionId) {
+                const prev = this.activeStream.get(sessionId) ?? '';
+                const indicator = `\n> 🔐 Esperando permiso: \`${perm.title}\`...\n`;
+                if (!prev.includes(indicator)) {
+                    const next = prev + indicator;
+                    this.activeStream.set(sessionId, next);
+                    this.emitStream({ sessionId, text: next, done: false, statusDetail: 'Esperando confirmación de permisos...' });
+                }
+            }
             await this.handlePermission(event.properties);
         }
     }
@@ -652,14 +672,16 @@ export class OpenCodeService implements vscode.Disposable {
             this.emitStream({ 
                 sessionId: this.sessionId, 
                 text: `\n> ⚠️ **Error detectado**: ${errMsg}\n> 🔄 **Cambiando al proveedor/clave de respaldo**: \`${displayModel}\`...\n`, 
-                done: false 
+                done: false,
+                statusDetail: 'Cambiando a proveedor de respaldo...'
             });
 
             // 5. Reiniciar/Reconectar para cargar la nueva clave
             this.emitStream({ 
                 sessionId: this.sessionId, 
                 text: `\n> 🔄 **Reiniciando servidor local de OpenCode...**\n`, 
-                done: false 
+                done: false,
+                statusDetail: 'Reiniciando OpenCode...'
             });
             await this.reconnect();
 
@@ -668,7 +690,8 @@ export class OpenCodeService implements vscode.Disposable {
             this.emitStream({ 
                 sessionId: this.sessionId, 
                 text: `\n> 🚀 **Reintentando consulta...**\n`, 
-                done: false 
+                done: false,
+                statusDetail: 'Reintentando petición...'
             });
 
             // 6. Actualizar el modelo en lastPromptInfo para que reintente con el nuevo
