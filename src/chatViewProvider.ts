@@ -526,16 +526,25 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             'webview',
             'main.js'
         );
+        const logoPath = path.join(
+            this.context.extensionUri.fsPath,
+            'resources',
+            'logo.svg'
+        );
         let html = fs.readFileSync(htmlPath, 'utf8');
         const scriptUri = webview
             .asWebviewUri(vscode.Uri.file(scriptPath))
+            .toString();
+        const logoUri = webview
+            .asWebviewUri(vscode.Uri.file(logoPath))
             .toString();
         const nonce = getNonce();
 
         html = html
             .replaceAll('{{cspSource}}', webview.cspSource)
             .replaceAll('{{nonce}}', nonce)
-            .replaceAll('{{scriptUri}}', scriptUri);
+            .replaceAll('{{scriptUri}}', scriptUri)
+            .replaceAll('{{logoUri}}', logoUri);
 
         return html;
     }
