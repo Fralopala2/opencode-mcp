@@ -1,9 +1,16 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { HttpOpenCodeClient } from './httpClient';
 import { partsToDisplayText, type PromptPart } from './parts';
 import { startOpencodeServer, type ManagedServer } from './serverProcess';
 import { getOpenCodeSettings, getWorkspaceDirectory } from './settings';
 import type { Agent, ServerEvent, Session, SessionMessage } from './types';
+
+const execPromise = promisify(exec);
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
@@ -30,6 +37,15 @@ export class OpenCodeService implements vscode.Disposable {
     private activeStream = new Map<string, string>();
     private sessionTimeout: NodeJS.Timeout | undefined;
     private readonly TIMEOUT_MS = 3 * 60 * 1000; // 3 minutos
+
+    private lastPromptInfo: {
+        text: string;
+        agent: string | undefined;
+        model: string | undefined;
+        contextParts: PromptPart[];
+        attachments: PromptPart[];
+    } | undefined;
+    private failoverIndices: Map<string, number> = new Map();
 
     private resetTimeout(sessionId: string): void {
         this.clearTimeout();
@@ -297,6 +313,8 @@ export class OpenCodeService implements vscode.Disposable {
             throw new Error('Sin conexión a OpenCode');
         }
 
+        this.lastPromptInfo = { text, agent, model, contextParts, attachments };
+
         const sessionId = await this.ensureSession();
         const settings = getOpenCodeSettings();
         const selectedAgent = agent || settings.defaultAgent || undefined;
@@ -420,12 +438,15 @@ export class OpenCodeService implements vscode.Disposable {
             this.clearTimeout();
             this.activeStream.delete(sessionId);
             
-            if (props?.error) {
-                const errMsg = props.error?.data?.message || props.error?.name || 'Error del agente';
-                this.emitStream({ sessionId, text: '', done: true, error: errMsg });
-            } else if (lastAssistant?.info?.error) {
-                const errorObj = lastAssistant.info.error;
-                const errMsg = errorObj.data?.message || errorObj.message || errorObj.name || 'Error del proveedor';
+            if (props?.error || lastAssistant?.info?.error) {
+                const errorObj = props?.error || lastAssistant?.info?.error;
+                const errMsg = errorObj?.data?.message || errorObj?.message || errorObj?.name || 'Error del proveedor';
+                
+                const failedOver = await this.attemptFailover(errMsg);
+                if (failedOver) {
+                    return;
+                }
+                
                 this.emitStream({ sessionId, text: '', done: true, error: errMsg });
             } else {
                 this.emitStream({ sessionId, text, done: true, metrics: lastAssistant?.info?.tokens });
@@ -435,6 +456,163 @@ export class OpenCodeService implements vscode.Disposable {
         if (event.type === 'permission.updated') {
             await this.handlePermission(event.properties);
         }
+    }
+
+    private async attemptFailover(errMsg: string): Promise<boolean> {
+        if (!this.lastPromptInfo || !this.sessionId || !this.client) return false;
+        
+        let providerName = 'openai';
+        let modelName: string | undefined;
+        
+        const selectedModel = this.lastPromptInfo.model || this.getSelectedModel();
+        if (selectedModel) {
+            const split = selectedModel.split('::');
+            if (split.length >= 1) providerName = split[0];
+            if (split.length >= 2) modelName = split[1];
+        }
+
+        try {
+            const workspaceDir = getWorkspaceDirectory() || '';
+            const configPath = path.join(workspaceDir, 'config', 'apis.json');
+            
+            if (!fs.existsSync(configPath)) {
+                return false;
+            }
+
+            const configContent = fs.readFileSync(configPath, 'utf8');
+            const config = JSON.parse(configContent);
+
+            // 1. Obtener la clave activa actual desde auth.json
+            const authPath = path.join(os.homedir(), '.local', 'share', 'opencode', 'auth.json');
+            let activeKey: string | undefined;
+            if (fs.existsSync(authPath)) {
+                try {
+                    const auth = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+                    activeKey = auth[providerName]?.key;
+                } catch (e) {
+                    console.error('[Failover] Error leyendo auth.json', e);
+                }
+            }
+
+            // 2. Determinar el siguiente índice de clave para el proveedor actual
+            const keys = config[providerName] || [];
+            let nextIndex = 0;
+            if (activeKey) {
+                const idx = keys.indexOf(activeKey);
+                if (idx !== -1) {
+                    nextIndex = idx + 1;
+                }
+            }
+
+            let nextApiKey: string | undefined;
+            let targetProvider = providerName;
+            let targetModel = modelName;
+
+            if (nextIndex < keys.length) {
+                // Hay más claves para el proveedor actual
+                nextApiKey = keys[nextIndex];
+            } else {
+                // No hay más claves para el proveedor actual, buscar el siguiente proveedor disponible en apis.json
+                const providers = Object.keys(config);
+                const currentProvIdx = providers.indexOf(providerName);
+                let found = false;
+
+                // Buscamos a partir del siguiente proveedor circularmente
+                for (let i = 1; i <= providers.length; i++) {
+                    const nextProvIdx = (currentProvIdx + i) % providers.length;
+                    const prov = providers[nextProvIdx];
+                    if (config[prov] && config[prov].length > 0) {
+                        targetProvider = prov;
+                        nextApiKey = config[prov][0]; // Primera clave del nuevo proveedor
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found || !nextApiKey) {
+                    return false; // No hay ningún proveedor con claves
+                }
+
+                // Intentar obtener un modelo válido para el nuevo proveedor
+                try {
+                    const providersData = await this.client.listProviders();
+                    const provInfo = (providersData.all || []).find((p: any) => p.id === targetProvider);
+                    if (provInfo && provInfo.models) {
+                        const modelsArray = Object.values(provInfo.models);
+                        if (modelsArray.length > 0) {
+                            const m = modelsArray[0] as any;
+                            targetModel = m.id;
+                        }
+                    }
+                } catch (e) {
+                    console.error('[Failover] Error obteniendo modelo para nuevo proveedor', e);
+                }
+            }
+
+            if (!nextApiKey) {
+                return false;
+            }
+
+            // 3. Escribir la nueva clave en auth.json
+            if (fs.existsSync(authPath)) {
+                try {
+                    const auth = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+                    if (!auth[targetProvider]) {
+                        auth[targetProvider] = { type: 'api' };
+                    }
+                    auth[targetProvider].key = nextApiKey;
+                    fs.writeFileSync(authPath, JSON.stringify(auth, null, 2), 'utf8');
+                } catch (e) {
+                    console.error('[Failover] Error escribiendo en auth.json', e);
+                    return false;
+                }
+            }
+
+            // 4. Mostrar mensaje de transición al usuario en el chat
+            const displayModel = targetModel ? `${targetProvider}::${targetModel}` : targetProvider;
+            this.emitStream({ 
+                sessionId: this.sessionId, 
+                text: `\n> ⚠️ **Error detectado**: ${errMsg}\n> 🔄 **Cambiando al proveedor/clave de respaldo**: \`${displayModel}\`...\n`, 
+                done: false 
+            });
+
+            // 5. Reiniciar/Reconectar para cargar la nueva clave
+            this.emitStream({ 
+                sessionId: this.sessionId, 
+                text: `\n> 🔄 **Reiniciando servidor local de OpenCode...**\n`, 
+                done: false 
+            });
+            await this.reconnect();
+
+            await new Promise(r => setTimeout(r, 1500));
+
+            this.emitStream({ 
+                sessionId: this.sessionId, 
+                text: `\n> 🚀 **Reintentando consulta...**\n`, 
+                done: false 
+            });
+
+            // 6. Actualizar el modelo en lastPromptInfo para que reintente con el nuevo
+            this.lastPromptInfo.model = targetModel ? `${targetProvider}::${targetModel}` : undefined;
+            
+            // Persistir el nuevo modelo seleccionado en el estado de VS Code para que el dropdown se actualice
+            if (this.lastPromptInfo.model) {
+                this.persistSelectedModel(this.lastPromptInfo.model);
+            }
+
+            await this.sendPrompt(
+                this.lastPromptInfo.text,
+                this.lastPromptInfo.agent,
+                this.lastPromptInfo.model,
+                this.lastPromptInfo.contextParts,
+                this.lastPromptInfo.attachments
+            );
+
+            return true;
+        } catch (e) {
+            console.error('[Failover]', e);
+        }
+        return false;
     }
 
     private async handlePermission(permission: unknown): Promise<void> {
