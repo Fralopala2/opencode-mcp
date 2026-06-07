@@ -29,6 +29,7 @@ Esta extensión para VS Code / Antigravity es un **panel lateral de chat** conec
 - **Panel de costos acumulativos**: seguimiento en tiempo real del costo por sesión agrupado por fecha y modelo, con soporte multi-moneda (USD/EUR) y persistencia en `costData.json`.
 - **Seguridad reforzada**: CSP restrictiva en el webview, sanitización de salida HTML, comandos sin shell (`execFile`), y rutas de auth configurables vía `OPENCODE_AUTH_PATH`.
 - **Robustez y estabilidad**: Timeout de 3 minutos con cancelación automática, reconexión automática (hasta 3 intentos con backoff exponencial), failover de API keys con rotación entre proveedores, parsing SSE tolerante a CRLF/LF, y detección de caídas de conexión SSE para no dejar el chat colgado.
+- **Mejoras de Interfaz**: Botones de contexto dedicados, selecciones robustas por ID y feedback visual inmediato en las interacciones del panel de chat.
 
 ## Requisitos
 

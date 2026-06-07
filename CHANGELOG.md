@@ -6,6 +6,14 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-06-07
+
+### Mejoras en UI
+- **Selección de botones**: Reemplazados selectores frágiles por IDs específicos en el frontend.
+- **Feedback visual**: Implementada respuesta visual en botones de herramientas al hacer clic.
+- **Menú de contexto**: Opciones expandidas con botones dedicados (archivo actual, selección, archivos abiertos).
+- **Eventos seguros**: Validación de existencia de elementos al registrar eventos para evitar errores de inicialización.
+
 ## [1.0.4] - 2026-06-06
 
 ### Corrección de Bugs
