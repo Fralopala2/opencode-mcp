@@ -69,6 +69,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                     `${count} archivo(s) añadidos al contexto.`
                 );
             }
+        }),
+        vscode.commands.registerCommand('opencode.setApiKeys', async () => {
+            const input = await vscode.window.showInputBox({
+                prompt: 'Pega el JSON de configuración de API Keys para Failover',
+                placeHolder: '{"openai": ["sk-..."], "anthropic": ["sk-..."]}',
+                ignoreFocusOut: true
+            });
+            if (input) {
+                try {
+                    const parsed = JSON.parse(input);
+                    await context.secrets.store('opencode.apis', JSON.stringify(parsed));
+                    vscode.window.showInformationMessage('API Keys guardadas de forma segura en SecretStorage.');
+                } catch (e) {
+                    vscode.window.showErrorMessage('El formato JSON introducido es inválido.');
+                }
+            }
+        }),
+        vscode.commands.registerCommand('opencode.clearApiKeys', async () => {
+            await context.secrets.delete('opencode.apis');
+            vscode.window.showInformationMessage('API Keys borradas del almacenamiento seguro.');
         })
     );
 

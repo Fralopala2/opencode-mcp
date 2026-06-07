@@ -1032,7 +1032,7 @@
      <button class="icon-btn" id="exportChatBtn" title="Exportar conversación">
        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
      </button>
-     <button class="icon-btn" id="clearChatBtn" title="Limpiar chat">
+     <button class="icon-btn" id="clearChatBtn" title="Limpiar chat" data-i18n-title="clearChat">
        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/></svg>
      </button>
      <button class="icon-btn" title="Nueva sesión">
@@ -1062,14 +1062,14 @@
 <!-- DROPDOWN AGENTE -->
 <div class="dropdown" id="agentDropdown" style="left: auto;">
   <div class="dropdown-section dropdown-section-agents">
-    <div class="dropdown-label">Agente</div>
+    <div class="dropdown-label" data-i18n="agent">Agente</div>
   </div>
 </div>
 
 <!-- DROPDOWN MODO -->
 <div class="dropdown" id="modeDropdown" style="left: auto;">
   <div class="dropdown-section">
-    <div class="dropdown-label">Modo</div>
+    <div class="dropdown-label" data-i18n="mode">Modo</div>
     <div class="dropdown-item" data-mode="auto">
       <span class="dropdown-check">✓</span>auto
     </div>
@@ -1132,8 +1132,8 @@
     <div class="opencode-welcome-icon">
       <img src="{{logoUri}}" alt="opencode" />
     </div>
-    <h2>OpenCode listo</h2>
-    <p>Haz una pregunta, genera código o abre un archivo como contexto.</p>
+    <h2 data-i18n="ready">OpenCode listo</h2>
+    <p data-i18n="readyDesc">Haz una pregunta, genera código o abre un archivo como contexto.</p>
     <div class="quick-actions" id="quickActionsContainer">
       <!-- Cargado dinámicamente -->
     </div>
@@ -1144,7 +1144,7 @@
     <div class="typing-dots">
       <span></span><span></span><span></span>
     </div>
-    <span class="typing-text" id="typingText" style="margin-left: 8px; color: var(--text-sec); font-family: var(--font-ui); font-size: 11px;">Pensando...</span>
+    <span class="typing-text" id="typingText" style="margin-left: 8px; color: var(--text-sec); font-family: var(--font-ui); font-size: 11px;" data-i18n="thinking">Pensando...</span>
     <span id="typingTimer" style="margin-left: 6px; color: var(--accent); font-family: var(--font-ui); font-size: 11px; font-weight: bold;"></span>
   </div>
 
@@ -1196,8 +1196,8 @@
    <!-- Panel de Costos -->
    <div id="costPanel" class="cost-panel">
     <div class="cost-header" style="display: flex; justify-content: space-between; align-items: center;">
-      <h3 style="margin: 0;">Costos Acumulativos</h3>
-      <button class="icon-btn" id="closeCostPanelBtn" title="Ocultar costos" style="margin: 0; padding: 4px; border: none; background: transparent; cursor: pointer; color: var(--text-muted);">
+      <h3 style="margin: 0;"><span data-i18n="costs">Costos Acumulativos</span></h3>
+      <button class="icon-btn" id="closeCostPanelBtn" title="Ocultar costos" data-i18n-title="hideCosts" style="margin: 0; padding: 4px; border: none; background: transparent; cursor: pointer; color: var(--text-muted);">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v2M12 16v2M6 12h2M18 12h2"/></svg>
       </button>
     </div>

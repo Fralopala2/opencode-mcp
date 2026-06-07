@@ -1,0 +1,23 @@
+{
+  "extension.description": "Chat sidebar connected to your local OpenCode (agents, skills, MCP)",
+  "command.ask": "OpenCode: Open chat panel",
+  "command.reconnect": "OpenCode: Reconnect to server",
+  "command.newSession": "OpenCode: New session",
+  "command.addFileToContext": "OpenCode: Add current file to context",
+  "command.addSelectionToContext": "OpenCode: Add selection to context",
+  "command.addOpenFilesToContext": "OpenCode: Add open files to context",
+  "command.addGitContext": "OpenCode: Add Git information to context",
+  "command.setApiKeys": "OpenCode: Set Failover API Keys",
+  "command.clearApiKeys": "OpenCode: Clear Failover API Keys",
+  "config.serverUrl.desc": "OpenCode server URL (opencode serve or TUI running).",
+  "config.serverPort.desc": "Port used when starting the server automatically.",
+  "config.serverUsername.desc": "HTTP Basic Auth user (if OPENCODE_SERVER_PASSWORD is set).",
+  "config.serverPassword.desc": "HTTP Basic Auth password for OpenCode server.",
+  "config.autoStartServer.desc": "Automatically run `opencode serve` if no server is found.",
+  "config.defaultAgent.desc": "Default OpenCode agent name (empty = OpenCode config).",
+  "config.autoApprovePermissions.desc": "Automatically approve permissions (bash, file edits, etc.).",
+  "config.bin.desc": "Path to opencode executable (empty = auto in Windows/npm). Equivalents to OPENCODE_BIN.",
+  "config.quickActions.desc": "Custom quick actions in the welcome screen.",
+  "view.title": "Chat",
+  "view.container.title": "OpenCode"
+}

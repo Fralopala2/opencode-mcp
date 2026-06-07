@@ -38,6 +38,43 @@
 
 
 
+  
+  const TRANSLATIONS = {
+    en: {
+      'agent': 'Agent',
+      'mode': 'Mode',
+      'clearChat': 'Clear chat',
+      'settings': 'Settings',
+      'costs': 'Cumulative Costs',
+      'hideCosts': 'Hide costs',
+      'gitContext': 'Add Git info to context',
+      'ready': 'OpenCode ready',
+      'readyDesc': 'Ask a question, generate code or open a file as context.',
+      'thinking': 'Thinking...'
+    }
+  };
+
+  function applyI18n() {
+    const lang = window.vscodeLang?.startsWith('en') ? 'en' : null;
+    if (!lang) return;
+    
+    const t = TRANSLATIONS[lang];
+    if (!t) return;
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (t[key]) el.textContent = t[key];
+    });
+
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      const key = el.getAttribute('data-i18n-title');
+      if (t[key]) el.setAttribute('title', t[key]);
+    });
+  }
+
+  applyI18n();
+
+
   function setStatus(state, detail) {
     if (state === 'busy') {
       showTyping(detail);

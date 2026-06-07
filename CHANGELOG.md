@@ -6,6 +6,14 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Released]
 
+## [1.0.7] - 2026-06-07
+
+### Integración con Git
+- **Contexto de Git**: Nuevo botón en la barra de herramientas para añadir información completa del repositorio al contexto.
+- **Detalles incluidos**: Branch actual, estado del repositorio (archivos modificados/staged), y los últimos 5 commits.
+- **Nuevo comando**: `opencode.addGitContext` disponible para añadir información de Git rápidamente.
+- **Sincronización en tiempo real**: Actualización automática de la información de Git en la interfaz mediante eventos `gitInfoUpdate`.
+
 ## [1.0.6] - 2026-06-07
 
 ### Mejoras en UI

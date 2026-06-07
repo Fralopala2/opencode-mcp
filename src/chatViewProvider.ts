@@ -710,7 +710,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             .replaceAll('{{cspSource}}', webview.cspSource)
             .replaceAll('{{nonce}}', nonce)
             .replaceAll('{{scriptUri}}', scriptUri)
-            .replaceAll('{{logoUri}}', logoUri);
+            .replaceAll('{{logoUri}}', logoUri)
+            .replace('</head>', `<script nonce="${nonce}">window.vscodeLang = "${vscode.env.language}";</script></head>`);
 
         return html;
     }

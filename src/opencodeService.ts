@@ -580,15 +580,12 @@ export class OpenCodeService implements vscode.Disposable {
         }
 
         try {
-            const workspaceDir = getWorkspaceDirectory() || '';
-            const configPath = path.join(workspaceDir, 'config', 'apis.json');
-            
-            if (!fs.existsSync(configPath)) {
+            const secretContent = await OpenCodeService.extensionContext?.secrets.get('opencode.apis');
+            if (!secretContent) {
                 return false;
             }
 
-            const configContent = fs.readFileSync(configPath, 'utf8');
-            const config = JSON.parse(configContent);
+            const config = JSON.parse(secretContent);
 
             // 1. Obtener la clave activa actual desde auth.json
             const authPath = getAuthPath();
@@ -602,7 +599,7 @@ export class OpenCodeService implements vscode.Disposable {
                 }
             }
 
-            // Marcar la clave fallida en config/apis.json
+            // Marcar la clave fallida en el almacenamiento seguro
             if (activeKey) {
                 const keysList = config[providerName] || [];
                 const keyIdx = keysList.findIndex((item: any) => (typeof item === 'string' ? item : item?.key) === activeKey);
@@ -614,10 +611,10 @@ export class OpenCodeService implements vscode.Disposable {
                         failedAt: new Date().toISOString()
                     };
                     try {
-                        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
-                        console.log('[Failover] Llave fallida marcada en apis.json.');
+                        await OpenCodeService.extensionContext?.secrets.store('opencode.apis', JSON.stringify(config));
+                        console.log('[Failover] Llave fallida marcada en almacenamiento seguro.');
                     } catch (err: any) {
-                        console.error('[Failover] Error al escribir apis.json:', err.message);
+                        console.error('[Failover] Error al escribir en almacenamiento seguro:', err.message);
                     }
                 }
             }

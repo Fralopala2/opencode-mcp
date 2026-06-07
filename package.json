@@ -1,8 +1,8 @@
 {
   "name": "opencode-mcp-vscode",
   "displayName": "OpenCode Panel",
-  "description": "Panel lateral de chat conectado a tu OpenCode local (agents, skills, MCP)",
-  "version": "1.0.6",
+  "description": "%extension.description%",
+  "version": "1.0.7",
   "publisher": "local",
   "repository": {
     "type": "git",
@@ -21,28 +21,36 @@
     "commands": [
       {
         "command": "opencode.ask",
-        "title": "OpenCode: Abrir panel de chat",
+        "title": "%command.ask%",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "opencode.reconnect",
-        "title": "OpenCode: Reconectar al servidor"
+        "title": "%command.reconnect%"
       },
       {
         "command": "opencode.newSession",
-        "title": "OpenCode: Nueva sesión"
+        "title": "%command.newSession%"
       },
       {
         "command": "opencode.addFileToContext",
-        "title": "OpenCode: Añadir archivo actual al contexto"
+        "title": "%command.addFileToContext%"
       },
       {
         "command": "opencode.addSelectionToContext",
-        "title": "OpenCode: Añadir selección al contexto"
+        "title": "%command.addSelectionToContext%"
       },
       {
         "command": "opencode.addOpenFilesToContext",
-        "title": "OpenCode: Añadir archivos abiertos al contexto"
+        "title": "%command.addOpenFilesToContext%"
+      },
+      {
+        "command": "opencode.setApiKeys",
+        "title": "%command.setApiKeys%"
+      },
+      {
+        "command": "opencode.clearApiKeys",
+        "title": "%command.clearApiKeys%"
       }
     ],
     "configuration": {
@@ -51,42 +59,42 @@
         "opencode.serverUrl": {
           "type": "string",
           "default": "http://127.0.0.1:4096",
-          "description": "URL del servidor OpenCode (opencode serve o TUI en ejecución)."
+          "description": "%config.serverUrl.desc%"
         },
         "opencode.serverPort": {
           "type": "number",
           "default": 4096,
-          "description": "Puerto usado al arrancar el servidor automáticamente."
+          "description": "%config.serverPort.desc%"
         },
         "opencode.serverUsername": {
           "type": "string",
           "default": "opencode",
-          "description": "Usuario HTTP Basic Auth (si OPENCODE_SERVER_PASSWORD está definido)."
+          "description": "%config.serverUsername.desc%"
         },
         "opencode.serverPassword": {
           "type": "string",
           "default": "",
-          "description": "Contraseña HTTP Basic Auth del servidor OpenCode."
+          "description": "%config.serverPassword.desc%"
         },
         "opencode.autoStartServer": {
           "type": "boolean",
           "default": true,
-          "description": "Si no hay servidor, ejecutar `opencode serve` automáticamente."
+          "description": "%config.autoStartServer.desc%"
         },
         "opencode.defaultAgent": {
           "type": "string",
           "default": "",
-          "description": "Nombre del agente OpenCode por defecto (vacío = config de OpenCode)."
+          "description": "%config.defaultAgent.desc%"
         },
         "opencode.autoApprovePermissions": {
           "type": "boolean",
           "default": false,
-          "description": "Aprobar automáticamente permisos (bash, edición, etc.)."
+          "description": "%config.autoApprovePermissions.desc%"
         },
         "opencode.bin": {
           "type": "string",
           "default": "",
-          "description": "Ruta al ejecutable opencode (vacío = auto en Windows/npm). Equivale a OPENCODE_BIN."
+          "description": "%config.bin.desc%"
         },
         "opencode.quickActions": {
           "type": "array",
@@ -130,7 +138,7 @@
               "text"
             ]
           },
-          "description": "Acciones rápidas personalizadas en la pantalla de bienvenida."
+          "description": "%config.quickActions.desc%"
         }
       }
     },
@@ -138,7 +146,7 @@
       "activitybar": [
         {
           "id": "opencode",
-          "title": "OpenCode",
+          "title": "%view.container.title%",
           "icon": "resources/icon.svg"
         }
       ]
@@ -148,7 +156,7 @@
         {
           "type": "webview",
           "id": "opencode.mcp",
-          "name": "Chat",
+          "name": "%view.title%",
           "icon": "resources/icon.svg"
         }
       ]

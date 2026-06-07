@@ -98,9 +98,10 @@ Puedes añadir contenido al contexto de la conversación para que OpenCode lo te
 | Añadir archivo actual | `Ctrl+Alt+Shift+F` | OpenCode: Añadir archivo actual al contexto |
 | Añadir selección | `Ctrl+Alt+Shift+S` | OpenCode: Añadir selección al contexto |
 | Añadir todos los abiertos | — | OpenCode: Añadir archivos abiertos al contexto |
+| Añadir estado de Git | — | OpenCode: Añadir información de Git al contexto (`opencode.addGitContext`) |
 | Adjuntar carpeta | — | *(Desde el botón en la interfaz de chat)* |
 
-También puedes acceder a estas opciones desde el **menú contextual** del editor o del explorador de archivos.
+También puedes acceder a estas opciones desde el **menú contextual** del editor o del explorador de archivos. El estado de Git incluye tu rama actual, archivos modificados y los últimos 5 commits.
 
 ## Panel de Costos Acumulativos
 
