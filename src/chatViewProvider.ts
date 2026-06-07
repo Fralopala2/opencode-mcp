@@ -618,6 +618,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 this.post({ type: 'costDataUpdate', costData });
                 break;
             }
+            case 'copyToClipboard': {
+                if (message.text) {
+                    await vscode.env.clipboard.writeText(message.text);
+                }
+                break;
+            }
             default:
                 break;
         }

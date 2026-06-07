@@ -317,7 +317,7 @@
 
   window.copyMsg = function(btn) {
     const body = btn.closest('.msg').querySelector('.msg-body');
-    navigator.clipboard.writeText(body.innerText);
+    vscode.postMessage({ type: 'copyToClipboard', text: body.innerText });
     btn.textContent = 'copiado ✓';
     setTimeout(() => {
       btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> copiar`;
