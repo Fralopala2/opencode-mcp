@@ -2,7 +2,7 @@
   "name": "opencode-mcp-vscode",
   "displayName": "OpenCode Panel",
   "description": "%extension.description%",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "publisher": "local",
   "repository": {
     "type": "git",
