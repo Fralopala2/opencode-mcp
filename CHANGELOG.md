@@ -4,13 +4,15 @@ All notable changes to the "opencode-mcp" extension will be documented in this f
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [Released]
 
 ## [1.0.6] - 2026-06-07
 
 ### Mejoras en UI
 - **Separación de controles**: Extraídos los selectores de "Agente" y "Modo" a sus propios botones desplegables independientes en la barra superior.
 - **Acceso directo a opciones**: El botón de "Configuración" ahora filtra y abre directamente los ajustes específicos de la extensión (`@ext:local.opencode-mcp-vscode`).
+- **Filtrado de agentes internos**: Se ocultan los agentes del sistema (`plan`, `compaction`, `summary`, `title`) del menú para evitar errores conversacionales.
+- **Panel de costos**: Añadido un botón de cerrar explícito en la cabecera del panel de costos.
 
 ## [1.0.5] - 2026-06-07
 ### Mejoras en UI
