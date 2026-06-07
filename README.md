@@ -84,10 +84,10 @@ Para integrar este adaptador en Claude Desktop, añade lo siguiente a tu archivo
 }
 ```
 
-### Agente Failover y Balanceo de API (`FailoverAgent`)
-Ubicado en `src/agent/failoverAgent.js`, es una solución local para garantizar resiliencia en llamadas al LLM.
-- **Configuración:** Copia el archivo `config/apis.example.json` como `config/apis.json` y define las listas de llaves API por proveedor (ej. `openai`).
-- **Rotación Automática:** Si la API devuelve error HTTP 429 (Rate Limit) o > 500, el agente cambia dinámicamente a la siguiente llave usando el comando `opencode /connect <provider> --key <next-key>` y reintenta la petición.
+### Agente Failover y Balanceo de API
+La extensión incluye una solución nativa para garantizar resiliencia en llamadas al LLM integrada de forma segura.
+- **Configuración Segura:** Ejecuta el comando **`OpenCode: Configurar API Keys de Failover`** (`opencode.setApiKeys`) y pega tu JSON con las baterías de APIs por proveedor (ej. `{"openai": ["sk-...", "sk-..."]}`). Esto se guardará cifrado en el llavero de tu sistema operativo mediante el `SecretStorage` de VS Code.
+- **Rotación Automática:** Si la API devuelve error HTTP 429 (Rate Limit) o > 500, la extensión cambia dinámicamente a la siguiente llave y reintenta la petición de forma transparente al usuario.
 
 ## Gestión de contexto
 

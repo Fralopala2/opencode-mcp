@@ -6,6 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Released]
 
+## [1.0.8] - 2026-06-07
+
+### Seguridad y Optimización
+- **Protección de API Keys**: Se migró el almacenamiento de llaves maestras de failover de `apis.json` al almacenamiento seguro del sistema (SecretStorage). Se añadieron los comandos `opencode.setApiKeys` y `opencode.clearApiKeys`.
+- **Límite de memoria**: Los archivos adjuntos al contexto se limitan a 1MB para prevenir cuelgues o problemas de tokens.
+- **Soporte Multi-idioma (i18n)**: La interfaz y los comandos ahora se adaptan automáticamente al español o al inglés según la configuración de VS Code.
+
 ## [1.0.7] - 2026-06-07
 
 ### Integración con Git
