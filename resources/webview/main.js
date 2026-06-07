@@ -239,12 +239,12 @@
       <div class="msg-body">${bodyHtml}</div>
       <div class="msg-actions">
         ${role === 'user' ? `
-          <button class="msg-act-btn" onclick="editMsg(this)">
+          <button class="msg-act-btn btn-edit">
             <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             editar
           </button>
         ` : ''}
-        <button class="msg-act-btn" onclick="copyMsg(this)">
+        <button class="msg-act-btn btn-copy">
           <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           copiar
         </button>
@@ -323,6 +323,19 @@
       btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> copiar`;
     }, 1500);
   };
+
+  messagesEl.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('.btn-edit');
+    if (editBtn) {
+      window.editMsg(editBtn);
+      return;
+    }
+    const copyBtn = e.target.closest('.btn-copy');
+    if (copyBtn) {
+      window.copyMsg(copyBtn);
+      return;
+    }
+  });
 
   /* auto-resize textarea */
   inputEl.addEventListener('input', () => {
