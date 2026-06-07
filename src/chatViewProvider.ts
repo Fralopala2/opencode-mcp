@@ -7,6 +7,7 @@ import { contextLabel, partsToDisplayText } from './parts';
 import { OpenCodeService } from './opencodeService';
 import { getOpenCodeSettings, getWorkspaceDirectory } from './settings';
 import { PromptPart } from './types';
+import { gitProvider } from './gitProvider';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'opencode.mcp';
@@ -127,6 +128,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             const models = await this.service.listModels();
             const primary = agents.filter((a) => a.mode === 'primary' || a.mode === 'all');
             
+            // Obtener información de Git
+            const workspaceDir = getWorkspaceDirectory();
+            let gitInfo = null;
+            if (workspaceDir) {
+                gitInfo = await gitProvider.getGitInfo(workspaceDir);
+            }
+            
             const sessionId = this.service.getSessionId() ?? '';
             let parsedMessages: any[] = [];
             if (sessionId) {
@@ -164,7 +172,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                      sessionId,
                      messages: parsedMessages,
                      quickActions: vscode.workspace.getConfiguration('opencode').get('quickActions') || [],
-                     costData
+                     costData,
+                     gitInfo
                  });
         } catch (error) {
             const msg = error instanceof Error ? error.message : String(error);
@@ -458,6 +467,40 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     type: 'system',
                     text: `Añadidos ${count} archivo(s) abiertos al contexto.`
                 });
+                break;
+            }
+            case 'addGitToContext': {
+                const workspaceDir = getWorkspaceDirectory();
+                if (workspaceDir) {
+                    const gitInfo = await gitProvider.getGitInfo(workspaceDir);
+                    if (gitInfo) {
+                        const formattedInfo = gitProvider.formatGitInfo(gitInfo);
+                        this.contextAttachments.addPart({
+                            type: 'text',
+                            text: formattedInfo
+                        });
+                        this.notifyContextChanged();
+                        this.post({
+                            type: 'system',
+                            text: `Información de Git añadida al contexto (branch: \`${gitInfo.branch}\`)`
+                        });
+                    } else {
+                        vscode.window.showInformationMessage('No se detectó un repositorio Git en el workspace.');
+                    }
+                } else {
+                    vscode.window.showErrorMessage('No hay directorio de espacio de trabajo abierto.');
+                }
+                break;
+            }
+            case 'refreshGitInfo': {
+                const workspaceDir = getWorkspaceDirectory();
+                if (workspaceDir) {
+                    const gitInfo = await gitProvider.getGitInfo(workspaceDir);
+                    this.post({
+                        type: 'gitInfoUpdate',
+                        gitInfo
+                    });
+                }
                 break;
             }
             case 'gitDiff': {

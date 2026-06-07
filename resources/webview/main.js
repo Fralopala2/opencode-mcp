@@ -15,14 +15,15 @@
   const stopBtn    = document.getElementById('stopBtn');
   const stopBtnSep = document.getElementById('stopBtnSep');
 
-  // Seleccionamos los botones de las herramientas usando IDs específicos
-  const attachFileBtn = document.getElementById('attachFileBtn');
-  const attachFolderBtn = document.getElementById('attachFolderBtn');
-  const insertCodeBtn = document.getElementById('insertCodeBtn');
-  const currentFileBtn = document.getElementById('currentFileBtn');
-  const selectionBtn = document.getElementById('selectionBtn');
-  const gitDiffBtn = document.getElementById('gitDiffBtn');
-  const contextAddBtn = document.getElementById('contextAddBtn');
+// Seleccionamos los botones de las herramientas usando IDs específicos
+   const attachFileBtn = document.getElementById('attachFileBtn');
+   const attachFolderBtn = document.getElementById('attachFolderBtn');
+   const insertCodeBtn = document.getElementById('insertCodeBtn');
+   const currentFileBtn = document.getElementById('currentFileBtn');
+   const selectionBtn = document.getElementById('selectionBtn');
+   const gitDiffBtn = document.getElementById('gitDiffBtn');
+   const gitContextBtn = document.getElementById('gitContextBtn');
+   const contextAddBtn = document.getElementById('contextAddBtn');
 
    let streamingNode = null;
    let streamingBodyNode = null;
@@ -548,12 +549,19 @@
     });
   }
 
-  if (gitDiffBtn) {
-    gitDiffBtn.addEventListener('click', () => {
-      showButtonFeedback(gitDiffBtn, gitDiffBtn.innerHTML, 500);
-      vscode.postMessage({ type: 'gitDiff' });
-    });
-  }
+if (gitDiffBtn) {
+     gitDiffBtn.addEventListener('click', () => {
+       showButtonFeedback(gitDiffBtn, gitDiffBtn.innerHTML, 500);
+       vscode.postMessage({ type: 'gitDiff' });
+     });
+   }
+
+   if (gitContextBtn) {
+     gitContextBtn.addEventListener('click', () => {
+       showButtonFeedback(gitContextBtn, gitContextBtn.innerHTML, 500);
+       vscode.postMessage({ type: 'addGitToContext' });
+     });
+   }
 
   if (contextAddBtn) {
     contextAddBtn.addEventListener('click', (e) => {
@@ -977,29 +985,46 @@
         streamingBodyNode = null;
         streamingMetaNode = null;
         break;
-      case 'context':
-        // Limpiamos los tags de contexto (que no sean adjuntos)
-        const existingCtx = contextBar.querySelectorAll('.ctx-tag:not(.ctx-att)');
-        existingCtx.forEach(el => el.remove());
-        
-        (msg.items || []).forEach((item, index) => {
-            const tag = document.createElement('div');
-            tag.className = 'ctx-tag';
-            tag.innerHTML = `
-              <svg viewBox="0 0 16 16"><path d="M4 4h8M4 8h6M4 11h4" stroke-linecap="round"/></svg>
-              ${item}
-              <span class="ctx-tag-close">
-                <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>
-              </span>
-            `;
-            tag.querySelector('.ctx-tag-close').onclick = () => {
-              vscode.postMessage({ type: 'removeContext', index });
-            };
-            const addBtn = contextBar.querySelector('.ctx-add');
-            if (addBtn) contextBar.insertBefore(tag, addBtn);
-            else contextBar.appendChild(tag);
-        });
-        break;
+case 'context':
+         // Limpiamos los tags de contexto (que no sean adjuntos)
+         const existingCtx = contextBar.querySelectorAll('.ctx-tag:not(.ctx-att)');
+         existingCtx.forEach(el => el.remove());
+         
+         (msg.items || []).forEach((item, index) => {
+             const tag = document.createElement('div');
+             tag.className = 'ctx-tag';
+             tag.innerHTML = `
+               <svg viewBox="0 0 16 16"><path d="M4 4h8M4 8h6M4 11h4" stroke-linecap="round"/></svg>
+               ${item}
+               <span class="ctx-tag-close">
+                 <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>
+               </span>
+             `;
+             tag.querySelector('.ctx-tag-close').onclick = () => {
+               vscode.postMessage({ type: 'removeContext', index });
+             };
+             const addBtn = contextBar.querySelector('.ctx-add');
+             if (addBtn) contextBar.insertBefore(tag, addBtn);
+             else contextBar.appendChild(tag);
+         });
+         break;
+       case 'gitInfoUpdate':
+         // Actualizar visualización de Git en tiempo real
+         if (msg.gitInfo) {
+           const gitSummary = `${msg.gitInfo.hasChanges ? '⚠️' : '✅'} \`${msg.gitInfo.branch}\` | ${msg.gitInfo.commits.length} commits`;
+           // Podrías mostrar esto en un panel de Git si existe
+           const gitStatusEl = document.getElementById('gitStatus');
+           if (gitStatusEl) {
+             gitStatusEl.textContent = gitSummary;
+             gitStatusEl.style.display = 'block';
+           }
+         } else {
+           const gitStatusEl = document.getElementById('gitStatus');
+           if (gitStatusEl) {
+             gitStatusEl.style.display = 'none';
+           }
+         }
+         break;
       case 'insertText':
         if (msg.text) {
           const start = inputEl.selectionStart;
