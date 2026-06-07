@@ -1190,13 +1190,13 @@
     <div class="tool-btn-sep"></div>
     <span class="mode-pill" id="modePill">auto</span>
     <span class="shortcut-hint">Enter ↵</span>
-  </div>
-   </div>
-
    <!-- Panel de Costos -->
    <div id="costPanel" class="cost-panel">
-    <div class="cost-header">
-      <h3>Costos Acumulativos</h3>
+    <div class="cost-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0;">Costos Acumulativos</h3>
+      <button class="icon-btn" id="closeCostPanelBtn" title="Ocultar costos" style="margin: 0; padding: 4px; border: none; background: transparent; cursor: pointer; color: var(--text-muted);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v2M12 16v2M6 12h2M18 12h2"/></svg>
+      </button>
     </div>
     <div id="costContent" class="cost-content">
       <!-- Aquí se mostrarán los costos -->

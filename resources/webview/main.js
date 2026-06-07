@@ -489,10 +489,17 @@
    }
 
     const toggleCostPanelBtn = document.getElementById('toggleCostPanelBtn');
+    const closeCostPanelBtn = document.getElementById('closeCostPanelBtn');
+
+    function toggleCostPanel() {
+      document.body.classList.toggle('cost-panel-open');
+    }
+
     if (toggleCostPanelBtn) {
-      toggleCostPanelBtn.addEventListener('click', () => {
-        document.body.classList.toggle('cost-panel-open');
-      });
+      toggleCostPanelBtn.addEventListener('click', toggleCostPanel);
+    }
+    if (closeCostPanelBtn) {
+      closeCostPanelBtn.addEventListener('click', toggleCostPanel);
     }
      if (stopBtn) {
        stopBtn.addEventListener('click', () => {
