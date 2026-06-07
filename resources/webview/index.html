@@ -1006,6 +1006,84 @@
 
 <!-- TOPBAR -->
 <div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">
+      <div class="logo-icon">
+        <img src="{{logoUri}}" alt="opencode" />
+      </div>
+      <span class="logo-text">opencode</span>
+    </div>
+    <div class="divider-v"></div>
+    <button class="model-btn" id="modelBtn" title="Seleccionar modelo">
+      <span class="model-dot"></span>
+      <span class="model-name" id="modelName">claude-sonnet-4</span>
+      <svg class="chevron" viewBox="0 0 8 8" fill="currentColor"><path d="M1 2.5L4 5.5L7 2.5"/></svg>
+    </button>
+    <button class="model-btn" id="agentBtn" title="Seleccionar agente" style="border-color: rgba(76,175,80,0.3);">
+      <span class="model-name" id="agentName" style="color:var(--accent);">Default</span>
+      <svg class="chevron" viewBox="0 0 8 8" fill="currentColor"><path d="M1 2.5L4 5.5L7 2.5"/></svg>
+    </button>
+    <button class="model-btn" id="modeBtn" title="Seleccionar modo">
+      <span class="model-name" id="modeName">auto</span>
+      <svg class="chevron" viewBox="0 0 8 8" fill="currentColor"><path d="M1 2.5L4 5.5L7 2.5"/></svg>
+    </button>
+  </div>
+   <div class="topbar-right">
+     <button class="icon-btn" id="exportChatBtn" title="Exportar conversación">
+       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+     </button>
+     <button class="icon-btn" id="clearChatBtn" title="Limpiar chat">
+       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/></svg>
+     </button>
+     <button class="icon-btn" title="Nueva sesión">
+       <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+     </button>
+     <button class="icon-btn" title="Historial">
+       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+     </button>
+     <button class="icon-btn" id="toggleCostPanelBtn" title="Mostrar/Ocultar costos">
+       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v2M12 16v2M6 12h2M18 12h2"/></svg>
+     </button>
+
+     <button class="icon-btn" title="Configuración">
+       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+     </button>
+   </div>
+</div>
+
+<!-- DROPDOWN MODELO -->
+<div class="dropdown-overlay" id="dropOverlay"></div>
+<div class="dropdown" id="modelDropdown">
+  <div class="dropdown-section">
+    <div class="dropdown-label">Modelo</div>
+  </div>
+</div>
+
+<!-- DROPDOWN AGENTE -->
+<div class="dropdown" id="agentDropdown" style="left: auto;">
+  <div class="dropdown-section dropdown-section-agents">
+    <div class="dropdown-label">Agente</div>
+  </div>
+</div>
+
+<!-- DROPDOWN MODO -->
+<div class="dropdown" id="modeDropdown" style="left: auto;">
+  <div class="dropdown-section">
+    <div class="dropdown-label">Modo</div>
+    <div class="dropdown-item" data-mode="auto">
+      <span class="dropdown-check">✓</span>auto
+    </div>
+    <div class="dropdown-item" data-mode="agent">
+      <span class="dropdown-check"></span>agent
+    </div>
+    <div class="dropdown-item" data-mode="chat">
+      <span class="dropdown-check"></span>chat
+    </div>
+  </div>
+</div>
+
+ <!-- BARRA DE CONTEXTO -->
+ <div class="context-bar" id="contextBar">
    <div class="ctx-tag">
      <svg viewBox="0 0 16 16"><path d="M4 4h8M4 8h6M4 11h4" stroke-linecap="round"/></svg>
      main.ts
