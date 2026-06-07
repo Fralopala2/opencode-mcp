@@ -755,7 +755,10 @@
           `;
           agentsList.appendChild(defaultItem);
 
+          const internalAgents = ['compaction', 'plan', 'summary', 'title'];
           msg.agents.forEach(agent => {
+            if (internalAgents.includes(agent.name)) return;
+            
             const item = document.createElement('div');
             item.className = 'dropdown-item' + (selectedAgent === agent.name ? ' active' : '');
             item.dataset.agent = agent.name;
