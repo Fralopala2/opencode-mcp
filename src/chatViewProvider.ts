@@ -529,7 +529,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                          
                          this.contextAttachments.addPart({
                              type: 'text',
-                             text: `Carpeta adjunta: ${folderPath}\nTamaño total: ${(folderSize / 1024 / 1024).toFixed(2)} MB\nContiene: ${await getFileCount(folderPath)} archivos`,
+                             text: `Carpeta adjunta: ${folderPath}\nTamaño total: ${(folderSize / 1024 / 1024).toFixed(2)} MB\nContiene: ${await this.getFileCount(folderPath)} archivos`,
                          });
                          this.notifyContextChanged();
                          this.post({
