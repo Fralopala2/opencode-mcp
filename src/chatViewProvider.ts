@@ -333,7 +333,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 }
                 break;
             case 'openSettings':
-                void vscode.commands.executeCommand('workbench.action.openSettings');
+                void vscode.commands.executeCommand('workbench.action.openSettings', '@ext:local.opencode-mcp-vscode');
                 break;
             case 'showHistory': {
                 try {

@@ -473,9 +473,11 @@
    }
 
   function updateTopbarDisplay() {
-    const agentText = selectedAgent ? `@${selectedAgent}` : '';
-    const modelText = selectedModel ? selectedModel.split('::').pop() : '';
-    modelNameEl.innerHTML = `<span class="model-display">${escHtml(modelText || 'default')}</span> ${agentText ? `<span style="opacity:0.5;margin:0 2px;">|</span><span class="agent-display" style="color:var(--accent);">${escHtml(agentText)}</span>` : ''}`;
+    const agentText = selectedAgent ? `@${selectedAgent}` : 'Default';
+    const modelText = selectedModel ? selectedModel.split('::').pop() : 'default';
+    if (modelNameEl) modelNameEl.innerHTML = `<span class="model-display">${escHtml(modelText)}</span>`;
+    const agentNameEl = document.getElementById('agentName');
+    if (agentNameEl) agentNameEl.textContent = agentText;
   }
 
   // Header buttons
@@ -566,61 +568,102 @@
     }
   });
 
-  /* dropdown modelo */
+  /* dropdown modelo, agente, modo */
+  const agentBtn = document.getElementById('agentBtn');
+  const agentDropdown = document.getElementById('agentDropdown');
+  const modeBtn = document.getElementById('modeBtn');
+  const modeDropdown = document.getElementById('modeDropdown');
+
+  function closeAllDropdowns() {
+    dropdown.classList.remove('open');
+    if(agentDropdown) agentDropdown.classList.remove('open');
+    if(modeDropdown) modeDropdown.classList.remove('open');
+    dropOverlay.classList.remove('open');
+  }
+
   modelBtn.addEventListener('click', e => {
     e.stopPropagation();
-    dropdown.classList.toggle('open');
-    dropOverlay.classList.toggle('open');
+    closeAllDropdowns();
+    dropdown.classList.add('open');
+    dropOverlay.classList.add('open');
   });
 
-  dropOverlay.addEventListener('click', () => {
-    dropdown.classList.remove('open');
-    dropOverlay.classList.remove('open');
-  });
+  if (agentBtn) {
+    agentBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      closeAllDropdowns();
+      agentDropdown.classList.add('open');
+      dropOverlay.classList.add('open');
+    });
+  }
 
-  dropdown.addEventListener('click', e => {
+  if (modeBtn) {
+    modeBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      closeAllDropdowns();
+      modeDropdown.classList.add('open');
+      dropOverlay.classList.add('open');
+    });
+  }
+
+  dropOverlay.addEventListener('click', closeAllDropdowns);
+
+  function handleDropdownClick(e) {
     const item = e.target.closest('.dropdown-item');
     if (!item) return;
 
-    if (item.dataset.value !== undefined) {
-      selectedModel = item.dataset.value;
-      dropdown.querySelectorAll('[data-value]').forEach(i => {
-        i.querySelector('.dropdown-check').textContent = '';
+    if (item.dataset.value !== undefined || item.dataset.model !== undefined) {
+      selectedModel = item.dataset.value || item.dataset.model;
+      dropdown.querySelectorAll('[data-value], [data-model]').forEach(i => {
+        const check = i.querySelector('.dropdown-check');
+        if(check) check.textContent = '';
         i.classList.remove('active');
       });
-      item.querySelector('.dropdown-check').textContent = '✓';
+      const check = item.querySelector('.dropdown-check');
+      if(check) check.textContent = '✓';
       item.classList.add('active');
-      dropdown.classList.remove('open');
-      dropOverlay.classList.remove('open');
+      closeAllDropdowns();
       updateTopbarDisplay();
       vscode.postMessage({ type: 'setModel', model: selectedModel });
     } else if (item.dataset.agent !== undefined) {
       selectedAgent = item.dataset.agent;
-      const list = dropdown.querySelector('.dropdown-agents-list');
+      const list = document.querySelector('.dropdown-agents-list');
       if (list) {
         list.querySelectorAll('[data-agent]').forEach(i => {
-          i.querySelector('.dropdown-check').textContent = '';
+          const check = i.querySelector('.dropdown-check');
+          if(check) check.textContent = '';
           i.classList.remove('active');
         });
       }
-      item.querySelector('.dropdown-check').textContent = '✓';
+      const check = item.querySelector('.dropdown-check');
+      if(check) check.textContent = '✓';
       item.classList.add('active');
-      dropdown.classList.remove('open');
-      dropOverlay.classList.remove('open');
+      closeAllDropdowns();
       updateTopbarDisplay();
       vscode.postMessage({ type: 'setAgent', agent: selectedAgent });
-    }
-  });
-  dropdown.querySelectorAll('[data-mode]').forEach(item => {
-    item.addEventListener('click', () => {
+    } else if (item.dataset.mode !== undefined) {
       selectedMode = item.dataset.mode;
-      modePill.textContent = selectedMode;
-      dropdown.querySelectorAll('[data-mode]').forEach(i => i.querySelector('.dropdown-check').textContent = '');
-      item.querySelector('.dropdown-check').textContent = '✓';
-      dropdown.classList.remove('open');
-      dropOverlay.classList.remove('open');
-    });
-  });
+      const mPill = document.getElementById('modePill');
+      if (mPill) mPill.textContent = selectedMode;
+      const mName = document.getElementById('modeName');
+      if (mName) mName.textContent = selectedMode;
+      
+      const p = item.closest('.dropdown');
+      if (p) {
+        p.querySelectorAll('[data-mode]').forEach(i => {
+          const check = i.querySelector('.dropdown-check');
+          if(check) check.textContent = '';
+        });
+      }
+      const check = item.querySelector('.dropdown-check');
+      if(check) check.textContent = '✓';
+      closeAllDropdowns();
+    }
+  }
+
+  dropdown.addEventListener('click', handleDropdownClick);
+  if (agentDropdown) agentDropdown.addEventListener('click', handleDropdownClick);
+  if (modeDropdown) modeDropdown.addEventListener('click', handleDropdownClick);
 
   // Manejar pegar imágenes
   inputEl.addEventListener('paste', (e) => {
@@ -683,16 +726,11 @@
           selectedAgent = msg.selectedAgent;
         }
         if (msg.agents) {
-          let agentSection = dropdown.querySelector('.dropdown-section-agents');
+          let agentSection = agentDropdown.querySelector('.dropdown-section-agents');
           if (!agentSection) {
             agentSection = document.createElement('div');
             agentSection.className = 'dropdown-section dropdown-section-agents';
-            const modeSection = Array.from(dropdown.querySelectorAll('.dropdown-section')).find(s => s.querySelector('.dropdown-label')?.textContent === 'Modo');
-            if (modeSection) {
-              dropdown.insertBefore(agentSection, modeSection);
-            } else {
-              dropdown.appendChild(agentSection);
-            }
+            agentDropdown.appendChild(agentSection);
           }
           agentSection.innerHTML = '<div class="dropdown-label">Agente</div>';
           const agentsList = document.createElement('div');

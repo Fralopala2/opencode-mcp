@@ -6,8 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-## [1.0.5] - 2026-06-07
+## [1.0.6] - 2026-06-07
 
+### Mejoras en UI
+- **Separación de controles**: Extraídos los selectores de "Agente" y "Modo" a sus propios botones desplegables independientes en la barra superior.
+- **Acceso directo a opciones**: El botón de "Configuración" ahora filtra y abre directamente los ajustes específicos de la extensión (`@ext:local.opencode-mcp-vscode`).
+
+## [1.0.5] - 2026-06-07
 ### Mejoras en UI
 - **Selección de botones**: Reemplazados selectores frágiles por IDs específicos en el frontend.
 - **Feedback visual**: Implementada respuesta visual en botones de herramientas al hacer clic.
