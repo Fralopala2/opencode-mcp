@@ -479,10 +479,63 @@
     transition: border-color 0.15s, color 0.15s;
   }
 
-  .ctx-add:hover {
-    border-color: var(--accent-dim);
-    color: var(--tag-fg);
-  }
+   .ctx-add:hover {
+     border-color: var(--accent-dim);
+     color: var(--tag-fg);
+   }
+
+   .context-dropdown {
+     position: relative;
+     display: inline-flex;
+   }
+
+   .context-menu {
+     position: absolute;
+     top: 100%;
+     left: 0;
+     background: var(--bg-input);
+     border: 1px solid var(--border);
+     border-radius: var(--radius);
+     margin-top: 4px;
+     min-width: 180px;
+     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+     display: none;
+     z-index: 1000;
+   }
+
+   .context-dropdown:hover .context-menu,
+   .context-menu.show {
+     display: block;
+   }
+
+   .context-menu-item {
+     display: flex;
+     align-items: center;
+     gap: 8px;
+     width: 100%;
+     padding: 8px 12px;
+     background: none;
+     border: none;
+     border-radius: 0;
+     color: var(--text-pri);
+     font-family: var(--font-body);
+     font-size: 12px;
+     text-align: left;
+     cursor: pointer;
+     transition: background 0.15s;
+   }
+
+   .context-menu-item:hover {
+     background: var(--bg-base);
+   }
+
+   .context-menu-item:first-child {
+     border-radius: var(--radius) var(--radius) 0 0;
+   }
+
+   .context-menu-item:last-child {
+     border-radius: 0 0 var(--radius) var(--radius);
+   }
 
   /* ── AREA DE MENSAJES ── */
   .messages {
@@ -1019,24 +1072,48 @@
   </div>
 </div>
 
-<!-- BARRA DE CONTEXTO -->
-<div class="context-bar" id="contextBar">
-  <div class="ctx-tag">
-    <svg viewBox="0 0 16 16"><path d="M4 4h8M4 8h6M4 11h4" stroke-linecap="round"/></svg>
-    main.ts
-    <span class="ctx-tag-close" onclick="this.closest('.ctx-tag').remove()">
-      <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>
-    </span>
-  </div>
-  <div class="ctx-tag">
-    <svg viewBox="0 0 16 16"><path d="M4 4h8M4 8h6M4 11h4" stroke-linecap="round"/></svg>
-    routes/api.ts
-    <span class="ctx-tag-close" onclick="this.closest('.ctx-tag').remove()">
-      <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>
-    </span>
-  </div>
-  <button class="ctx-add" onclick="addCtxTag()">+ Añadir contexto</button>
-</div>
+ <!-- BARRA DE CONTEXTO -->
+ <div class="context-bar" id="contextBar">
+   <div class="ctx-tag">
+     <svg viewBox="0 0 16 16"><path d="M4 4h8M4 8h6M4 11h4" stroke-linecap="round"/></svg>
+     main.ts
+     <span class="ctx-tag-close" onclick="this.closest('.ctx-tag').remove()">
+       <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>
+     </span>
+   </div>
+   <div class="ctx-tag">
+     <svg viewBox="0 0 16 16"><path d="M4 4h8M4 8h6M4 11h4" stroke-linecap="round"/></svg>
+     routes/api.ts
+     <span class="ctx-tag-close" onclick="this.closest('.ctx-tag').remove()">
+       <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>
+     </span>
+   </div>
+   <div class="context-dropdown">
+     <button class="ctx-add" id="contextAddBtn" title="Añadir archivos, selección o carpeta al contexto">+ Añadir contexto</button>
+     <div class="context-menu" id="contextMenu">
+       <button class="context-menu-item" onclick="addContextFile()" title="Seleccionar archivos para añadir al contexto">
+         <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h10v10H3zM7 7v6M7 1h2"/></svg>
+         Añadir archivos
+       </button>
+       <button class="context-menu-item" onclick="addCurrentFile()" title="Añadir archivo actual al contexto">
+         <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h10v10H3zM7 7v6M7 1h2"/></svg>
+         Archivo actual
+       </button>
+       <button class="context-menu-item" onclick="addSelection()" title="Añadir selección actual al contexto">
+         <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7l3-3 3 3M6 4v8M7 12h2"/></svg>
+         Selección actual
+       </button>
+       <button class="context-menu-item" onclick="addOpenFiles()" title="Añadir todos los archivos abiertos al contexto">
+         <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h12v12H2zM4 4h8M4 8h8M4 12h4"/></svg>
+         Todos los archivos
+       </button>
+       <button class="context-menu-item" onclick="attachFolder()" title="Adjuntar carpeta al contexto">
+         <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6h12v6H2zm2-4h2v2H4zm3 0h2v2h-2zm3 0h2v2h-2z"/></svg>
+         Adjuntar carpeta
+       </button>
+     </div>
+   </div>
+ </div>
 
 <!-- MENSAJES -->
 <div class="messages" id="messages">
@@ -1081,25 +1158,25 @@
       <span>STOP</span>
     </button>
     <div class="tool-btn-sep" id="stopBtnSep" style="display: none;"></div>
-     <button class="tool-btn" title="Adjuntar archivo">
-       <svg viewBox="0 0 24 24"><path d="M21.44 11.05L12.25 20.24a6 6 0 01-8.49-8.49l9.2-9.19a4 4 0 015.66 5.65L9.41 17.41a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+ <button class="tool-btn" id="attachFileBtn" title="Adjuntar archivo">
+        <svg viewBox="0 0 24 24"><path d="M21.44 11.05L12.25 20.24a6 6 0 01-8.49-8.49l9.2-9.19a4 4 0 015.66 5.65L9.41 17.41a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+      </button>
+      <button class="tool-btn" id="attachFolderBtn" title="Adjuntar carpeta">
+        <svg viewBox="0 0 24 24"><path d="M3 10h18v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8zm4-6h2v3H7V4zm4 0h2v3h-2V4zm4 0h2v3h-2V4z"/></svg>
+      </button>
+      <button class="tool-btn" id="insertCodeBtn" title="Insertar código">
+        <svg viewBox="0 0 24 24"><path d="M9 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2h-2M9 3a2 2 0 002 2h2a2 2 0 002-2M9 3a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      </button>
+     <button class="tool-btn" id="currentFileBtn" title="Archivo activo como contexto">
+       <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
      </button>
-     <button class="tool-btn" title="Adjuntar carpeta">
-       <svg viewBox="0 0 24 24"><path d="M3 10h18v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8zm4-6h2v3H7V4zm4 0h2v3h-2V4zm4 0h2v3h-2V4z"/></svg>
+     <div class="tool-btn-sep"></div>
+     <button class="tool-btn" id="selectionBtn" title="Selección del editor">
+       <svg viewBox="0 0 24 24"><path d="M3 9l4-4 4 4M7 5v14M21 15l-4 4-4-4M17 19V5"/></svg>
      </button>
-     <button class="tool-btn" title="Insertar código">
-       <svg viewBox="0 0 24 24"><path d="M9 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2h-2M9 3a2 2 0 002 2h2a2 2 0 002-2M9 3a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+     <button class="tool-btn" id="gitDiffBtn" title="Git diff actual">
+       <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v4a2 2 0 002 2h4M18 15v-4a2 2 0 00-2-2h-4"/></svg>
      </button>
-    <button class="tool-btn" title="Archivo activo como contexto">
-      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
-    </button>
-    <div class="tool-btn-sep"></div>
-    <button class="tool-btn" title="Selección del editor">
-      <svg viewBox="0 0 24 24"><path d="M3 9l4-4 4 4M7 5v14M21 15l-4 4-4-4M17 19V5"/></svg>
-    </button>
-    <button class="tool-btn" title="Git diff actual">
-      <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v4a2 2 0 002 2h4M18 15v-4a2 2 0 00-2-2h-4"/></svg>
-    </button>
     <div class="tool-btn-sep"></div>
     <span class="mode-pill" id="modePill">auto</span>
     <span class="shortcut-hint">Enter ↵</span>

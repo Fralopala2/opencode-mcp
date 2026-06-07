@@ -83,18 +83,33 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         void this.refreshState();
      }
 
-     private calculateCost(inputTokens: number, outputTokens: number, model: string): { usd: number, eur: number } {
-         const modelPrices: Record<string, { input: number, output: number }> = {
-           'mistral-medium-latest': { input: 2.00, output: 6.00 },
-           'default': { input: 2.00, output: 6.00 }
-         };
+      private calculateCost(inputTokens: number, outputTokens: number, model: string): { usd: number, eur: number } {
+          const modelPrices: Record<string, { input: number, output: number }> = {
+            'mistral-medium-latest': { input: 2.00, output: 6.00 },
+            'default': { input: 2.00, output: 6.00 }
+          };
 
-         const price = modelPrices[model] || modelPrices['default'];
-         const usd = (inputTokens * price.input + outputTokens * price.output) / 1000000;
-         const eur = usd * 0.92;
+          const price = modelPrices[model] || modelPrices['default'];
+          const usd = (inputTokens * price.input + outputTokens * price.output) / 1000000;
+          const eur = usd * 0.92;
 
-         return { usd, eur };
-     }
+          return { usd, eur };
+      }
+
+      private async getFileCount(dir: string): Promise<number> {
+          let count = 0;
+          const files = await fs.promises.readdir(dir);
+          for (const file of files) {
+              const filePath = path.join(dir, file);
+              const stats = await fs.promises.stat(filePath);
+              if (stats.isDirectory()) {
+                  count += await this.getFileCount(filePath);
+              } else {
+                  count++;
+              }
+          }
+          return count;
+      }
 
      focus(): void {
         if (this.view) {
@@ -349,15 +364,35 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 const fileUris = await vscode.window.showOpenDialog({
                     canSelectMany: true,
                     openLabel: 'Añadir al contexto',
+                    filters: {
+                        'Archivos de código': ['ts', 'js', 'tsx', 'jsx', 'py', 'rs', 'go', 'java', 'cpp', 'c', 'h', 'cs', 'php', 'rb', 'swift', 'kt', 'scala', 'm', 'sh', 'sql', 'md', 'json', 'xml', 'yaml', 'yml', 'toml'],
+                        'Archivos de texto': ['txt', 'log', 'conf', 'ini', 'cfg'],
+                        'Archivos de imagen': ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'],
+                        'Todos los archivos': ['*']
+                    }
                 });
                 if (fileUris && fileUris.length > 0) {
+                    let successCount = 0;
+                    let errorCount = 0;
+                    
                     for (const uri of fileUris) {
                         try {
                             await this.contextAttachments.addFileUri(uri);
+                            successCount++;
                         } catch (e) {
-                            this.post({ type: 'error', message: `No se pudo añadir al contexto: ${path.basename(uri.fsPath)}` });
+                            const errorMsg = `No se pudo añadir al contexto: ${path.basename(uri.fsPath)} - ${e instanceof Error ? e.message : 'Error desconocido'}`;
+                            this.post({ type: 'error', message: errorMsg });
+                            errorCount++;
                         }
                     }
+                    
+                    if (successCount > 0) {
+                        this.post({
+                            type: 'system',
+                            text: `Añadidos ${successCount} archivo(s) al contexto${errorCount > 0 ? `, ${errorCount} error(es)` : ''}.`
+                        });
+                    }
+                    
                     this.notifyContextChanged();
                 }
                 break;
@@ -416,6 +451,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 this.notifyContextChanged();
                 break;
             }
+            case 'addOpenFilesToContext': {
+                const count = await this.contextAttachments.addOpenFiles();
+                this.notifyContextChanged();
+                this.post({
+                    type: 'system',
+                    text: `Añadidos ${count} archivo(s) abiertos al contexto.`
+                });
+                break;
+            }
             case 'gitDiff': {
                 const cwd = getWorkspaceDirectory();
                 if (cwd) {
@@ -435,7 +479,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 }
                 break;
             }
-             case 'attachFolder':
+              case 'attachFolder':
                  const folderUri = await vscode.window.showOpenDialog({
                      canSelectFiles: false,
                      canSelectFolders: true,
@@ -444,58 +488,131 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                  });
                  if (folderUri && folderUri.length > 0) {
                      const folderPath = folderUri[0].fsPath;
-                     this.contextAttachments.addPart({
-                         type: 'text',
-                         text: `Carpeta adjunta: ${folderPath}`,
-                     });
-                     this.notifyContextChanged();
-                     this.post({
-                         type: 'system',
-                         text: `Carpeta adjunta al contexto: ${folderPath}`,
-                     });
+                     
+                     try {
+                         // Verificar si la carpeta existe y es accesible
+                         const stats = await fs.promises.stat(folderPath);
+                         if (!stats.isDirectory()) {
+                             this.post({ type: 'error', message: 'La ruta seleccionada no es una carpeta válida.' });
+                             return;
+                         }
+                         
+                         // Limitar el tamaño de la carpeta (evitar carpetas demasiado grandes)
+                         const maxSize = 100 * 1024 * 1024; // 100MB
+                         let folderSize = 0;
+                         
+                         try {
+                             // Calcular tamaño total de la carpeta
+                             const calculateFolderSize = async (dir: string): Promise<number> => {
+                                 let size = 0;
+                                 const files = await fs.promises.readdir(dir);
+                                 for (const file of files) {
+                                     const filePath = path.join(dir, file);
+                                     const fileStats = await fs.promises.stat(filePath);
+                                     if (fileStats.isDirectory()) {
+                                         size += await calculateFolderSize(filePath);
+                                     } else {
+                                         size += fileStats.size;
+                                         if (size > maxSize) {
+                                             throw new Error('La carpeta es demasiado grande (máximo 100MB)');
+                                         }
+                                     }
+                                 }
+                                 return size;
+                             };
+                             
+                             folderSize = await calculateFolderSize(folderPath);
+                         } catch (sizeError) {
+                             this.post({ type: 'error', message: sizeError instanceof Error ? sizeError.message : 'La carpeta es demasiado grande' });
+                             return;
+                         }
+                         
+                         this.contextAttachments.addPart({
+                             type: 'text',
+                             text: `Carpeta adjunta: ${folderPath}\nTamaño total: ${(folderSize / 1024 / 1024).toFixed(2)} MB\nContiene: ${await getFileCount(folderPath)} archivos`,
+                         });
+                         this.notifyContextChanged();
+                         this.post({
+                             type: 'system',
+                             text: `Carpeta adjunta al contexto: ${folderPath}`,
+                         });
+                         
+                     } catch (error) {
+                         const errorMsg = `No se pudo adjuntar la carpeta: ${error instanceof Error ? error.message : 'Error desconocido'}`;
+                         this.post({ type: 'error', message: errorMsg });
+                     }
                  }
                  break;
-             case 'attachFile':
-                const fileUris = await vscode.window.showOpenDialog({
-                    canSelectMany: true,
-                    openLabel: 'Adjuntar',
-                });
-                if (fileUris && fileUris.length > 0) {
-                    for (const uri of fileUris) {
-                        try {
-                            const buffer = await vscode.workspace.fs.readFile(uri);
-                            let mime = 'application/octet-stream';
-                            const ext = path.extname(uri.fsPath).toLowerCase();
-                            if (['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext)) {
-                                mime = `image/${ext.replace('.', '').replace('jpg', 'jpeg')}`;
-                                const b64 = Buffer.from(buffer).toString('base64');
-                                this.post({
-                                    type: 'fileAttached',
-                                    attachment: {
-                                        type: 'file',
-                                        mime,
-                                        filename: path.basename(uri.fsPath),
-                                        url: `data:${mime};base64,${b64}`,
-                                    },
-                                });
-                            } else {
-                                // Enviar la ruta del archivo para archivos locales no-imágenes
-                                this.post({
-                                    type: 'fileAttached',
-                                    attachment: {
-                                        type: 'file',
-                                        mime: 'text/plain',
-                                        filename: path.basename(uri.fsPath),
-                                        url: `file://${uri.fsPath}`,
-                                    },
-                                });
-                            }
-                        } catch (e) {
-                            this.post({ type: 'error', message: `No se pudo adjuntar: ${path.basename(uri.fsPath)}` });
-                        }
-                    }
-                }
-                break;
+              case 'attachFile':
+                 const fileUris = await vscode.window.showOpenDialog({
+                     canSelectMany: true,
+                     openLabel: 'Adjuntar',
+                     filters: {
+                         'Archivos de imagen': ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'],
+                         'Archivos de texto': ['txt', 'log', 'conf', 'ini', 'cfg', 'md'],
+                         'Todos los archivos': ['*']
+                     }
+                 });
+                 if (fileUris && fileUris.length > 0) {
+                     let successCount = 0;
+                     let errorCount = 0;
+                     
+                     for (const uri of fileUris) {
+                         try {
+                             const buffer = await vscode.workspace.fs.readFile(uri);
+                             let mime = 'application/octet-stream';
+                             const ext = path.extname(uri.fsPath).toLowerCase();
+                             if (['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext)) {
+                                 mime = `image/${ext.replace('.', '').replace('jpg', 'jpeg')}`;
+                                 const b64 = Buffer.from(buffer).toString('base64');
+                                 this.post({
+                                     type: 'fileAttached',
+                                     attachment: {
+                                         type: 'file',
+                                         mime,
+                                         filename: path.basename(uri.fsPath),
+                                         url: `data:${mime};base64,${b64}`,
+                                     },
+                                 });
+                             } else {
+                                 // Validar tamaño del archivo para archivos de texto
+                                 const maxSize = 10 * 1024 * 1024; // 10MB
+                                 if (buffer.length > maxSize) {
+                                     this.post({ 
+                                         type: 'error', 
+                                         message: `El archivo ${path.basename(uri.fsPath)} es demasiado grande (máximo 10MB)` 
+                                     });
+                                     errorCount++;
+                                     continue;
+                                 }
+                                 
+                                 // Enviar la ruta del archivo para archivos locales no-imágenes
+                                 this.post({
+                                     type: 'fileAttached',
+                                     attachment: {
+                                         type: 'file',
+                                         mime: 'text/plain',
+                                         filename: path.basename(uri.fsPath),
+                                         url: `file://${uri.fsPath}`,
+                                     },
+                                 });
+                             }
+                             successCount++;
+                         } catch (e) {
+                             const errorMsg = `No se pudo adjuntar: ${path.basename(uri.fsPath)} - ${e instanceof Error ? e.message : 'Error desconocido'}`;
+                             this.post({ type: 'error', message: errorMsg });
+                             errorCount++;
+                         }
+                     }
+                     
+                     if (successCount > 0) {
+                         this.post({
+                             type: 'system',
+                             text: `Adjuntados ${successCount} archivo(s)${errorCount > 0 ? `, ${errorCount} error(es)` : ''}.`
+                         });
+                     }
+                 }
+                 break;
             case 'loadCostData': {
                 let costData: Record<string, any> = JSON.parse(JSON.stringify(this.context.globalState.get('costData') || {}));
                 this.post({ type: 'costDataUpdate', costData });

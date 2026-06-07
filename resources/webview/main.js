@@ -15,8 +15,14 @@
   const stopBtn    = document.getElementById('stopBtn');
   const stopBtnSep = document.getElementById('stopBtnSep');
 
-  // Seleccionamos los botones de las herramientas (usaremos sus titles o indices, mejor añadimos un event listener al botón de adjuntar por su tooltip)
-  const attachBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Adjuntar'));
+  // Seleccionamos los botones de las herramientas usando IDs específicos
+  const attachFileBtn = document.getElementById('attachFileBtn');
+  const attachFolderBtn = document.getElementById('attachFolderBtn');
+  const insertCodeBtn = document.getElementById('insertCodeBtn');
+  const currentFileBtn = document.getElementById('currentFileBtn');
+  const selectionBtn = document.getElementById('selectionBtn');
+  const gitDiffBtn = document.getElementById('gitDiffBtn');
+  const contextAddBtn = document.getElementById('contextAddBtn');
 
    let streamingNode = null;
    let streamingBodyNode = null;
@@ -413,9 +419,45 @@
     });
   };
 
-  window.addCtxTag = function() {
-    vscode.postMessage({ type: 'addContextFile' });
-  };
+   window.addCtxTag = function() {
+     vscode.postMessage({ type: 'addContextFile' });
+   };
+
+   window.addContextFile = function() {
+     showButtonFeedback(contextAddBtn, contextAddBtn.innerHTML, 500);
+     vscode.postMessage({ type: 'addContextFile' });
+   };
+
+   window.addCurrentFile = function() {
+     showButtonFeedback(contextAddBtn, contextAddBtn.innerHTML, 500);
+     vscode.postMessage({ type: 'addCurrentFileToContext' });
+   };
+
+   window.addSelection = function() {
+     showButtonFeedback(contextAddBtn, contextAddBtn.innerHTML, 500);
+     vscode.postMessage({ type: 'addSelectionToContext' });
+   };
+
+   window.addOpenFiles = function() {
+     showButtonFeedback(contextAddBtn, contextAddBtn.innerHTML, 500);
+     vscode.postMessage({ type: 'addOpenFilesToContext' });
+   };
+
+   window.attachFolder = function() {
+     showButtonFeedback(contextAddBtn, contextAddBtn.innerHTML, 500);
+     vscode.postMessage({ type: 'attachFolder' });
+   };
+
+   function showButtonFeedback(button, originalContent, duration = 1000) {
+     const originalHTML = button.innerHTML;
+     button.style.opacity = '0.5';
+     button.disabled = true;
+     setTimeout(() => {
+       button.innerHTML = originalContent;
+       button.style.opacity = '1';
+       button.disabled = false;
+     }, duration);
+   }
 
   function updateTopbarDisplay() {
     const agentText = selectedAgent ? `@${selectedAgent}` : '';
@@ -449,32 +491,67 @@
   document.querySelector('[title="Historial"]').addEventListener('click', () => vscode.postMessage({ type: 'showHistory' }));
   document.querySelector('[title="Configuración"]').addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
   
-  if (attachBtn) {
-    attachBtn.addEventListener('click', () => vscode.postMessage({ type: 'attachFile' }));
+  if (attachFileBtn) {
+    attachFileBtn.addEventListener('click', () => {
+      showButtonFeedback(attachFileBtn, attachFileBtn.innerHTML, 500);
+      vscode.postMessage({ type: 'attachFile' });
+    });
   }
 
-  const insertCodeBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Insertar código'));
-  const activeFileBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Archivo activo como contexto'));
-  const selectionBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Selección del editor'));
-  const gitDiffBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Git diff actual'));
-
-   const attachFolderBtn = Array.from(document.querySelectorAll('.tool-btn')).find(b => b.title.includes('Adjuntar carpeta'));
-   if (attachFolderBtn) {
-     attachFolderBtn.addEventListener('click', () => vscode.postMessage({ type: 'attachFolder' }));
-   }
-   
-   if (insertCodeBtn) {
-     insertCodeBtn.addEventListener('click', () => vscode.postMessage({ type: 'insertCodeBlock' }));
-   }
-  if (activeFileBtn) {
-    activeFileBtn.addEventListener('click', () => vscode.postMessage({ type: 'addCurrentFileToContext' }));
+  if (attachFolderBtn) {
+    attachFolderBtn.addEventListener('click', () => {
+      showButtonFeedback(attachFolderBtn, attachFolderBtn.innerHTML, 500);
+      vscode.postMessage({ type: 'attachFolder' });
+    });
   }
+
+  if (insertCodeBtn) {
+    insertCodeBtn.addEventListener('click', () => {
+      showButtonFeedback(insertCodeBtn, insertCodeBtn.innerHTML, 500);
+      vscode.postMessage({ type: 'insertCodeBlock' });
+    });
+  }
+
+  if (currentFileBtn) {
+    currentFileBtn.addEventListener('click', () => {
+      showButtonFeedback(currentFileBtn, currentFileBtn.innerHTML, 500);
+      vscode.postMessage({ type: 'addCurrentFileToContext' });
+    });
+  }
+
   if (selectionBtn) {
-    selectionBtn.addEventListener('click', () => vscode.postMessage({ type: 'addSelectionToContext' }));
+    selectionBtn.addEventListener('click', () => {
+      showButtonFeedback(selectionBtn, selectionBtn.innerHTML, 500);
+      vscode.postMessage({ type: 'addSelectionToContext' });
+    });
   }
+
   if (gitDiffBtn) {
-    gitDiffBtn.addEventListener('click', () => vscode.postMessage({ type: 'gitDiff' }));
+    gitDiffBtn.addEventListener('click', () => {
+      showButtonFeedback(gitDiffBtn, gitDiffBtn.innerHTML, 500);
+      vscode.postMessage({ type: 'gitDiff' });
+    });
   }
+
+  if (contextAddBtn) {
+    contextAddBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const contextMenu = document.getElementById('contextMenu');
+      if (contextMenu) {
+        contextMenu.classList.toggle('show');
+      }
+      showButtonFeedback(contextAddBtn, contextAddBtn.innerHTML, 500);
+    });
+  }
+
+  // Cerrar el menú cuando se hace clic fuera
+  document.addEventListener('click', (e) => {
+    const contextDropdown = document.querySelector('.context-dropdown');
+    const contextMenu = document.getElementById('contextMenu');
+    if (contextDropdown && !contextDropdown.contains(e.target) && contextMenu) {
+      contextMenu.classList.remove('show');
+    }
+  });
 
   /* dropdown modelo */
   modelBtn.addEventListener('click', e => {
