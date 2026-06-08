@@ -167,6 +167,7 @@
         totalDiv.textContent = `Total ${latest}: $${data.usd.toFixed(6)} | €${data.eur.toFixed(6)}`;
     }
 
+   function updateCostPanel() {
       // Also update monthly total card
       updateMonthlyTotal();
      const costContent = document.getElementById('costContent');
