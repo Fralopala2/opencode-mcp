@@ -142,7 +142,33 @@
      node.appendChild(meta);
    }
 
-   function updateCostPanel() {
+   function updateMonthlyTotal() {
+        const totalDiv = document.getElementById('monthlyTotal');
+        if (!totalDiv) return;
+        // Aggregate by month (YYYY-MM)
+        const monthMap = {};
+        for (const date in costData) {
+            const month = date.slice(0,7); // YYYY-MM
+            if (!monthMap[month]) monthMap[month] = { usd: 0, eur: 0 };
+            const models = costData[date];
+            for (const model in models) {
+                monthMap[month].usd += models[model].usd;
+                monthMap[month].eur += models[model].eur;
+            }
+        }
+        // Get latest month
+        const months = Object.keys(monthMap).sort((a,b)=> new Date(b)-new Date(a));
+        if (months.length===0) {
+            totalDiv.textContent='';
+            return;
+        }
+        const latest = months[0];
+        const data = monthMap[latest];
+        totalDiv.textContent = `Total ${latest}: $${data.usd.toFixed(6)} | €${data.eur.toFixed(6)}`;
+    }
+
+      // Also update monthly total card
+      updateMonthlyTotal();
      const costContent = document.getElementById('costContent');
      if (!costContent) return;
 

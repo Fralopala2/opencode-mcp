@@ -47,7 +47,7 @@
       right: calc(var(--cost-panel-width) + 12px);
     }
 
-    .cost-header {
+    .cost-monthly { text-align: center; margin-bottom: 10px; font-weight: bold; color: var(--accent); }
       text-align: center;
       margin-bottom: 15px;
       color: var(--text-pri);
@@ -1197,6 +1197,7 @@
    <div id="costPanel" class="cost-panel">
     <div class="cost-header" style="display: flex; justify-content: space-between; align-items: center;">
       <h3 style="margin: 0;"><span data-i18n="costs">Costos Acumulativos</span></h3>
+        <div id="monthlyTotal" class="cost-monthly" style="margin-top:8px; font-weight:bold; color:var(--accent);"></div>
       <button class="icon-btn" id="closeCostPanelBtn" title="Ocultar costos" data-i18n-title="hideCosts" style="margin: 0; padding: 4px; border: none; background: transparent; cursor: pointer; color: var(--text-muted);">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v2M12 16v2M6 12h2M18 12h2"/></svg>
       </button>
