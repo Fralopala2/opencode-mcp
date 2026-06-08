@@ -84,13 +84,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         void this.refreshState();
      }
 
-      private calculateCost(inputTokens: number, outputTokens: number, model: string): { usd: number, eur: number } {
+      private calculateCost(inputTokens: number, outputTokens: number, model: string | undefined): { usd: number, eur: number } {
           const modelPrices: Record<string, { input: number, output: number }> = {
             'mistral-medium-latest': { input: 2.00, output: 6.00 },
             'default': { input: 2.00, output: 6.00 }
           };
 
-          const price = modelPrices[model] || modelPrices['default'];
+          const price = modelPrices[model ?? 'default'];
           const usd = (inputTokens * price.input + outputTokens * price.output) / 1000000;
           const eur = usd * 0.92;
 
