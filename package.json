@@ -3,7 +3,7 @@
   "displayName": "OpenCode Panel",
   "description": "%extension.description%",
   "version": "1.0.8",
-  "publisher": "local",
+  "publisher": "pacoaldev@gmail.com",
   "repository": {
     "type": "git",
     "url": "https://github.com/fralopala2/opencode-mcp.git"
@@ -13,7 +13,10 @@
   },
   "categories": [
     "Other",
-    "Machine Learning"
+    "Machine Learning",
+    "AI",
+    "LLM",
+    "OpenCode"
   ],
   "icon": "resources/logo.png",
   "main": "./out/extension.js",

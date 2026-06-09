@@ -446,9 +446,9 @@
         renderAttachments();
       };
       
-      const addBtn = contextBar.querySelector('.ctx-add');
-      if (addBtn) {
-          contextBar.insertBefore(tag, addBtn);
+      const dropdown = contextBar.querySelector('.context-dropdown');
+      if (dropdown) {
+          contextBar.insertBefore(tag, dropdown);
       } else {
           contextBar.appendChild(tag);
       }
@@ -1067,8 +1067,8 @@ case 'context':
              tag.querySelector('.ctx-tag-close').onclick = () => {
                vscode.postMessage({ type: 'removeContext', index });
              };
-             const addBtn = contextBar.querySelector('.ctx-add');
-             if (addBtn) contextBar.insertBefore(tag, addBtn);
+             const dropdown = contextBar.querySelector('.context-dropdown');
+             if (dropdown) contextBar.insertBefore(tag, dropdown);
              else contextBar.appendChild(tag);
          });
          break;
