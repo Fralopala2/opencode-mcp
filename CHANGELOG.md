@@ -6,6 +6,14 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Released]
 
+## [1.0.11] - 2026-06-10
+
+### Nuevas Funcionalidades y Refactorización
+- **OpenCodeService**: Nuevo servicio para gestionar conexiones del servidor, sesiones y el ciclo de vida del streaming.
+- **Webview Controller**: Implementada lógica del controlador para la UI del chat, estado del streaming y seguimiento de costos.
+- **Webview UI**: Añadida implementación de la interfaz de chat y seguimiento de ejecución de herramientas.
+- **Branding**: Actualizada metadata de la extensión, branding y URLs de las imágenes del README.
+
 ## [1.0.8] - 2026-06-07
 
 ### Seguridad y Optimización

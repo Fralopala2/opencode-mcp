@@ -7,11 +7,9 @@
 Esta extensión para VS Code / Antigravity es un **panel lateral de chat** conectado directamente a tu instancia local de **OpenCode**. Permite interactuar con tus **agents**, **skills**, **MCP** y **providers** configurados en `~/.config/opencode/opencode.jsonc` e incorpora características avanzadas como **historial de chat persistente**, **gestión de errores**, **adaptador MCP**, **agente de failover** y **panel de costos acumulativos** en tiempo real.
 
 
-<div align="center">
-  <img src="https://raw.githubusercontent.com/fralopala2/opencode-mcp/main/resources/1.png" alt="Panel de Chat 1" height="300" style="vertical-align: middle; margin: 0 10px;" />
-  <img src="https://raw.githubusercontent.com/fralopala2/opencode-mcp/main/resources/2.png" alt="Panel de Chat 2" height="300" style="vertical-align: middle; margin: 0 10px;" />
-  <img src="https://raw.githubusercontent.com/fralopala2/opencode-mcp/main/resources/3.png" alt="Panel de Chat 3" height="300" style="vertical-align: middle; margin: 0 10px;" />
-</div>
+| Interfaz Principal | Panel de Costos | Ajustes y Modelos |
+|:---:|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/fralopala2/opencode-mcp/main/resources/1.png" alt="Panel 1" width="100%" /> | <img src="https://raw.githubusercontent.com/fralopala2/opencode-mcp/main/resources/2.png" alt="Panel 2" width="100%" /> | <img src="https://raw.githubusercontent.com/fralopala2/opencode-mcp/main/resources/3.png" alt="Panel 3" width="100%" /> |
 
 
 ## Características
@@ -42,16 +40,18 @@ Esta extensión para VS Code / Antigravity es un **panel lateral de chat** conec
 
 ### Instalación
 
-1. Clona este repositorio.
-2. Ejecuta `npm install` para instalar las dependencias.
-3. Compila la extensión con `npm run compile`.
+Puedes instalar la extensión directamente desde el **Marketplace de VS Code**:
+1. Abre la vista de Extensiones en VS Code (`Ctrl+Shift+X`).
+2. Busca `opencode-mcp-vscode` o visita el enlace [OpenCode Chat Panel](https://marketplace.visualstudio.com/items?itemName=Pacoaldev.opencode-mcp-vscode).
+3. Haz clic en **Instalar**.
+
+*(Alternativamente, puedes instalarla desde tu navegador a través del [Marketplace de VS Code](https://marketplace.visualstudio.com/items?itemName=Pacoaldev.opencode-mcp-vscode)).*
 
 ### Uso
 
-1. Abre el proyecto en VS Code.
-2. Pulsa **F5** para iniciar el **Extension Development Host** o empaqueta la extensión con `npm run package` (esto generará un archivo `.vsix`) e instálala en VS Code desde el menú de la pestaña de extensiones (`Install from VSIX...`).
-3. Abre el panel de OpenCode desde la barra de actividad (icono de OpenCode) o usando el atajo `Ctrl+Alt+O`.
-4. Escribe tu consulta en el panel de chat y envíala con **Enviar** o `Ctrl+Enter`.
+1. Asegúrate de tener instalado y configurado [OpenCode CLI](https://opencode.ai/) en tu sistema.
+2. Abre el panel de OpenCode desde la barra de actividad (icono de OpenCode) o usando el atajo `Ctrl+Alt+O`.
+3. Escribe tu consulta en el panel de chat y envíala con **Enviar** o `Ctrl+Enter`.
 
 Si el servidor de OpenCode no está en ejecución y la opción `opencode.autoStartServer` está activada (valor por defecto), la extensión iniciará automáticamente el servidor con `opencode serve` en el puerto configurado.
 
