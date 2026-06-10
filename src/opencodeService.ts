@@ -469,52 +469,18 @@ export class OpenCodeService implements vscode.Disposable {
             }
         }
     }
-    private async handleEvent(event: ServerEvent): Promise<void> {
-        const sessionId = this.sessionId;
-        if (!sessionId || !this.client) {
-            return;
-        }
+     private async handleEvent(event: ServerEvent): Promise<void> {
+         const sessionId = this.sessionId;
+         if (!sessionId || !this.client) {
+             return;
+         }
 
-        this.resetTimeout(sessionId);
+         this.resetTimeout(sessionId);
 
-        if (event.type === 'message.part.updated') {
-            const props = event.properties as {
-                part?: { sessionID?: string; type?: string; text?: string; messageID?: string; tool?: string; state?: any };
-                delta?: string;
-            } | undefined;
-            if (props?.part?.sessionID !== sessionId || !props.part.messageID) {
-                return;
-            }
-
-            if (props.part.type === 'text' || props.part.type === 'reasoning') {
-                const prev = this.activeStream.get(sessionId) ?? '';
-                const next =
-                    props.delta !== undefined
-                        ? prev + props.delta
-                        : (props.part.text ?? prev);
-                this.activeStream.set(sessionId, next);
-                this.emitStream({ sessionId, text: next, done: false, statusDetail: 'Generando respuesta...' });
-            } else if (props.part.type === 'call') {
-                const toolName = props.part.tool || 'herramienta';
-                const prev = this.activeStream.get(sessionId) ?? '';
-                const indicator = `\n> ⚙️ Ejecutando: \`${toolName}\`...\n`;
-                if (!prev.includes(indicator)) {
-                    const next = prev + indicator;
-                    this.activeStream.set(sessionId, next);
-                    this.emitStream({ sessionId, text: next, done: false, statusDetail: `Ejecutando ${toolName}...` });
-                }
-            } else if (props.part.type === 'tool') {
-                const toolName = props.part.tool || 'herramienta';
-                const prev = this.activeStream.get(sessionId) ?? '';
-                const status = props.part.state?.status === 'error' ? '❌ Error en' : '✅ Completado:';
-                const indicator = `\n> ${status} \`${toolName}\`\n`;
-                if (!prev.includes(indicator)) {
-                    const next = prev + indicator;
-                    this.activeStream.set(sessionId, next);
-                    this.emitStream({ sessionId, text: next, done: false, statusDetail: `Herramienta ${toolName} completada.` });
-                }
-            }
-        }
+          if (event.type === 'message.part.updated') {
+              await this.handleMessagePartUpdatedEvent(event);
+              return;
+          }
 
         if (event.type === 'session.idle') {
             const props = event.properties as { sessionID?: string; error?: any } | undefined;
@@ -563,10 +529,56 @@ export class OpenCodeService implements vscode.Disposable {
                 }
             }
             await this.handlePermission(event.properties);
-        }
-    }
+     }
+}
 
-    private async attemptFailover(errMsg: string): Promise<boolean> {
+     private async handleMessagePartUpdatedEvent(event: ServerEvent): Promise<void> {
+         const sessionId = this.sessionId;
+         if (!sessionId || !this.client) {
+             return;
+         }
+
+         this.resetTimeout(sessionId);
+
+         const props = event.properties as {
+             part?: { sessionID?: string; type?: string; text?: string; messageID?: string; tool?: string; state?: any };
+             delta?: string;
+         } | undefined;
+         if (props?.part?.sessionID !== sessionId || !props.part.messageID) {
+             return;
+         }
+
+         if (props.part.type === 'text' || props.part.type === 'reasoning') {
+             const prev = this.activeStream.get(sessionId) ?? '';
+             const next =
+                 props.delta !== undefined
+                     ? prev + props.delta
+                     : (props.part.text ?? prev);
+             this.activeStream.set(sessionId, next);
+             this.emitStream({ sessionId, text: next, done: false, statusDetail: 'Generando respuesta...' });
+         } else if (props.part.type === 'call') {
+             const toolName = props.part.tool || 'herramienta';
+             const prev = this.activeStream.get(sessionId) ?? '';
+             const indicator = `\n> ⚙️ Ejecutando: \`${toolName}\`...\n`;
+             if (!prev.includes(indicator)) {
+                 const next = prev + indicator;
+                 this.activeStream.set(sessionId, next);
+                 this.emitStream({ sessionId, text: next, done: false, statusDetail: `Ejecutando ${toolName}...` });
+             }
+         } else if (props.part.type === 'tool') {
+             const toolName = props.part.tool || 'herramienta';
+             const prev = this.activeStream.get(sessionId) ?? '';
+             const status = props.part.state?.status === 'error' ? '❌ Error en' : '✅ Completado:';
+             const indicator = `\n> ${status} \`${toolName}\`\n`;
+             if (!prev.includes(indicator)) {
+                 const next = prev + indicator;
+                 this.activeStream.set(sessionId, next);
+                 this.emitStream({ sessionId, text: next, done: false, statusDetail: `Herramienta ${toolName} completada.` });
+             }
+         }
+     }
+
+     private async attemptFailover(errMsg: string): Promise<boolean> {
         if (!this.lastPromptInfo || !this.sessionId || !this.client) return false;
         
         let providerName = 'openai';

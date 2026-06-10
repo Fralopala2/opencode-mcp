@@ -9,6 +9,13 @@ import { getOpenCodeSettings, getWorkspaceDirectory } from './settings';
 import { PromptPart } from './types';
 import { gitProvider } from './gitProvider';
 
+/**
+ * Utility function to extract error message from unknown error type
+ */
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
 export class ChatViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'opencode.mcp';
 
@@ -175,10 +182,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                      costData,
                      gitInfo
                  });
-        } catch (error) {
-            const msg = error instanceof Error ? error.message : String(error);
-            this.post({ type: 'error', message: msg });
-        }
+         } catch (error) {
+             const msg = getErrorMessage(error);
+             this.post({ type: 'error', message: msg });
+         }
     }
 
     getContextAttachments(): ContextAttachments {
@@ -189,223 +196,49 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         void this.view?.webview.postMessage(payload);
     }
 
-    private async onMessage(message: any): Promise<void> {
-        switch (message.type) {
-            case 'ready':
-                await this.refreshState();
-                break;
-            case 'send': {
-                const text = message.text?.trim();
-                const attachments = message.attachments || [];
-                if (!text && attachments.length === 0) {
-                    return;
-                }
-                const agent = message.agent || this.selectedAgent || undefined;
-                const model = message.model || undefined;
-                const contextParts = [...this.contextAttachments.getItems()];
-                this.contextAttachments.clear();
-                this.post({ type: 'status', state: 'busy' });
-                this.post({
-                    type: 'context',
-                    items: [],
-                });
-                try {
-                    await this.service.sendPrompt(text || '', agent, model, contextParts, attachments);
-                } catch (error) {
-                    const msg = error instanceof Error ? error.message : String(error);
-                    this.post({ type: 'error', message: msg });
-                    this.post({ type: 'status', state: 'idle' });
-                }
-                break;
-            }
-            case 'setAgent':
-                this.selectedAgent = message.agent ?? '';
-                break;
-            case 'setModel':
-                this.service.persistSelectedModel(message.model ?? '');
-                break;
-            case 'reconnect':
-                this.post({ type: 'status', state: 'connecting' });
-                try {
-                    await this.service.reconnect();
-                    await this.refreshState();
-                } catch (error) {
-                    const msg = error instanceof Error ? error.message : String(error);
-                    this.post({ type: 'error', message: msg });
-                }
-                break;
-            case 'newSession':
-                try {
-                    await this.service.newSession();
-                    await this.refreshState();
-                    this.post({ type: 'system', text: 'Nueva sesión creada.' });
-                } catch (error) {
-                    const msg = error instanceof Error ? error.message : String(error);
-                    this.post({ type: 'error', message: msg });
-                }
-                break;
-            case 'clearChat': {
-                const choice = await vscode.window.showWarningMessage(
-                    '¿Estás seguro de que quieres limpiar el chat?',
-                    { modal: true },
-                    'Limpiar'
-                );
-                if (choice === 'Limpiar') {
-                    try {
-                        await this.service.newSession();
-                        await this.refreshState();
-                        this.post({ type: 'chatCleared' });
-                    } catch (error) {
-                        const msg = error instanceof Error ? error.message : String(error);
-                        this.post({ type: 'error', message: msg });
-                    }
-                }
-                break;
-            }
-            case 'exportChat': {
-                const sessionId = this.service.getSessionId();
-                if (!sessionId) {
-                    vscode.window.showErrorMessage('No hay sesión activa para exportar.');
-                    break;
-                }
-                try {
-                    const messages = await this.service.listMessages(sessionId);
-                    if (messages.length === 0) {
-                        vscode.window.showInformationMessage('La conversación está vacía.');
-                        break;
-                    }
-
-                    const format = await vscode.window.showQuickPick(
-                        ['Markdown (.md)', 'JSON (.json)', 'Texto plano (.txt)'],
-                        { placeHolder: 'Selecciona el formato de exportación' }
-                    );
-                    if (!format) {
-                        break;
-                    }
-
-                    let defaultExt = '.md';
-                    let filterName = 'Markdown Files';
-                    if (format.includes('JSON')) {
-                        defaultExt = '.json';
-                        filterName = 'JSON Files';
-                    } else if (format.includes('Texto')) {
-                        defaultExt = '.txt';
-                        filterName = 'Text Files';
-                    }
-
-                    const uri = await vscode.window.showSaveDialog({
-                        defaultUri: vscode.Uri.file(path.join(getWorkspaceDirectory() || '', `chat-export${defaultExt}`)),
-                        filters: { [filterName]: [defaultExt.substring(1)] }
-                    });
-
-                    if (!uri) {
-                        break;
-                    }
-
-                    let content = '';
-                    if (defaultExt === '.json') {
-                        const simpleMessages = messages.map(m => ({
-                            role: m.info.role,
-                            text: partsToDisplayText(m.parts),
-                            timestamp: new Date().toISOString()
-                        }));
-                        content = JSON.stringify(simpleMessages, null, 2);
-                    } else if (defaultExt === '.md') {
-                        content = `# Exportación de Conversación de OpenCode\n\n`;
-                        messages.forEach(m => {
-                            const roleDisplay = m.info.role === 'user' ? 'Tú' : 'OpenCode';
-                            content += `### **${roleDisplay}**\n\n${partsToDisplayText(m.parts)}\n\n---\n\n`;
-                        });
-                    } else {
-                        messages.forEach(m => {
-                            const roleDisplay = m.info.role === 'user' ? 'Tú' : 'OpenCode';
-                            content += `[${roleDisplay}]:\n${partsToDisplayText(m.parts)}\n\n`;
-                        });
-                    }
-
-                    await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
-                    vscode.window.showInformationMessage(`Conversación exportada exitosamente.`);
-                } catch (error) {
-                    const msg = error instanceof Error ? error.message : String(error);
-                    vscode.window.showErrorMessage(`Error al exportar conversación: ${msg}`);
-                }
-                break;
-            }
-            case 'abort':
-                try {
-                    await this.service.abortSession();
-                    this.post({ type: 'system', text: 'Sesión abortada.' });
-                    this.post({ type: 'status', state: 'idle' });
-                } catch (error) {
-                    const msg = error instanceof Error ? error.message : String(error);
-                    this.post({ type: 'error', message: msg });
-                }
-                break;
-            case 'openSettings':
-                void vscode.commands.executeCommand('workbench.action.openSettings', '@ext:local.opencode-mcp-vscode');
-                break;
-            case 'showHistory': {
-                try {
-                    const sessions = await this.service.listSessions();
-                    if (sessions.length === 0) {
-                        vscode.window.showInformationMessage('No hay sesiones anteriores.');
-                        return;
-                    }
-                    const items = sessions.map((s) => ({
-                        label: s.title || `Sesión ${s.id.slice(0, 8)}`,
-                        description: s.id,
-                        session: s,
-                    }));
-                    const selected = await vscode.window.showQuickPick(items, {
-                        placeHolder: 'Selecciona una sesión para cargar',
-                    });
-                    if (selected) {
-                        await this.service.selectSession(selected.session.id);
-                        await this.refreshState();
-                    }
-                } catch (error) {
-                    const msg = error instanceof Error ? error.message : String(error);
-                    vscode.window.showErrorMessage(`Error al listar sesiones: ${msg}`);
-                }
-                break;
-            }
-            case 'addContextFile': {
-                const fileUris = await vscode.window.showOpenDialog({
-                    canSelectMany: true,
-                    openLabel: 'Añadir al contexto',
-                    filters: {
-                        'Archivos de código': ['ts', 'js', 'tsx', 'jsx', 'py', 'rs', 'go', 'java', 'cpp', 'c', 'h', 'cs', 'php', 'rb', 'swift', 'kt', 'scala', 'm', 'sh', 'sql', 'md', 'json', 'xml', 'yaml', 'yml', 'toml'],
-                        'Archivos de texto': ['txt', 'log', 'conf', 'ini', 'cfg'],
-                        'Archivos de imagen': ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'],
-                        'Todos los archivos': ['*']
-                    }
-                });
-                if (fileUris && fileUris.length > 0) {
-                    let successCount = 0;
-                    let errorCount = 0;
-                    
-                    for (const uri of fileUris) {
-                        try {
-                            await this.contextAttachments.addFileUri(uri);
-                            successCount++;
-                        } catch (e) {
-                            const errorMsg = `No se pudo añadir al contexto: ${path.basename(uri.fsPath)} - ${e instanceof Error ? e.message : 'Error desconocido'}`;
-                            this.post({ type: 'error', message: errorMsg });
-                            errorCount++;
-                        }
-                    }
-                    
-                    if (successCount > 0) {
-                        this.post({
-                            type: 'system',
-                            text: `Añadidos ${successCount} archivo(s) al contexto${errorCount > 0 ? `, ${errorCount} error(es)` : ''}.`
-                        });
-                    }
-                    
-                    this.notifyContextChanged();
-                }
-                break;
-            }
+     private async onMessage(message: any): Promise<void> {
+         switch (message.type) {
+             case 'ready':
+                 await this.handleReadyMessage();
+                 break;
+             case 'send': {
+                 await this.handleSendMessage(message);
+                 break;
+             }
+             case 'setAgent':
+                 this.handleSetAgentMessage(message);
+                 break;
+             case 'setModel':
+                 this.handleSetModelMessage(message);
+                 break;
+             case 'reconnect':
+                 await this.handleReconnectMessage();
+                 break;
+             case 'newSession':
+                 await this.handleNewSessionMessage();
+                 break;
+             case 'clearChat': {
+                 await this.handleClearChatMessage();
+                 break;
+             }
+             case 'exportChat': {
+                 await this.handleExportChatMessage();
+                 break;
+             }
+             case 'abort':
+                 await this.handleAbortMessage();
+                 break;
+             case 'openSettings':
+                 this.handleOpenSettingsMessage();
+                 break;
+             case 'showHistory': {
+                 await this.handleShowHistoryMessage();
+                 break;
+             }
+              case 'addContextFile': {
+                 await this.handleAddContextFileMessage();
+                 break;
+             }
             case 'removeContext': {
                 const index = message.index;
                 if (typeof index === 'number') {
@@ -672,12 +505,234 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    notifyContextChanged(): void {
-        this.post({
-            type: 'context',
-            items: this.contextAttachments.getItems().map((p) => contextLabel(p)),
-        });
-    }
+     notifyContextChanged(): void {
+         this.post({
+             type: 'context',
+             items: this.contextAttachments.getItems().map((p) => contextLabel(p)),
+         });
+     }
+
+     private async handleReadyMessage(): Promise<void> {
+         await this.refreshState();
+     }
+
+     private async handleSendMessage(message: any): Promise<void> {
+         const text = message.text?.trim();
+         const attachments = message.attachments || [];
+         if (!text && attachments.length === 0) {
+             return;
+         }
+         const agent = message.agent || this.selectedAgent || undefined;
+         const model = message.model || undefined;
+         const contextParts = [...this.contextAttachments.getItems()];
+         this.contextAttachments.clear();
+         this.post({ type: 'status', state: 'busy' });
+         this.post({
+             type: 'context',
+             items: [],
+         });
+         try {
+             await this.service.sendPrompt(text || '', agent, model, contextParts, attachments);
+         } catch (error) {
+             const msg = error instanceof Error ? error.message : String(error);
+             this.post({ type: 'error', message: msg });
+             this.post({ type: 'status', state: 'idle' });
+         }
+     }
+
+     private handleSetAgentMessage(message: any): void {
+         this.selectedAgent = message.agent ?? '';
+     }
+
+     private handleSetModelMessage(message: any): void {
+         this.service.persistSelectedModel(message.model ?? '');
+     }
+
+     private async handleReconnectMessage(): Promise<void> {
+         this.post({ type: 'status', state: 'connecting' });
+         try {
+             await this.service.reconnect();
+             await this.refreshState();
+         } catch (error) {
+             const msg = error instanceof Error ? error.message : String(error);
+             this.post({ type: 'error', message: msg });
+         }
+     }
+
+     private async handleNewSessionMessage(): Promise<void> {
+         try {
+             await this.service.newSession();
+             await this.refreshState();
+             this.post({ type: 'system', text: 'Nueva sesión creada.' });
+         } catch (error) {
+             const msg = error instanceof Error ? error.message : String(error);
+             this.post({ type: 'error', message: msg });
+         }
+     }
+
+     private async handleClearChatMessage(): Promise<void> {
+         const choice = await vscode.window.showWarningMessage(
+             '¿Estás seguro de que quieres limpiar el chat?',
+             { modal: true },
+             'Limpiar'
+         );
+         if (choice === 'Limpiar') {
+             try {
+                 await this.service.newSession();
+                 await this.refreshState();
+                 this.post({ type: 'chatCleared' });
+             } catch (error) {
+                 const msg = error instanceof Error ? error.message : String(error);
+                 this.post({ type: 'error', message: msg });
+             }
+         }
+     }
+
+     private async handleExportChatMessage(): Promise<void> {
+         const sessionId = this.service.getSessionId();
+         if (!sessionId) {
+             vscode.window.showErrorMessage('No hay sesión activa para exportar.');
+             return;
+         }
+         try {
+             const messages = await this.service.listMessages(sessionId);
+             if (messages.length === 0) {
+                 vscode.window.showInformationMessage('La conversación está vacía.');
+                 return;
+             }
+
+             const format = await vscode.window.showQuickPick(
+                 ['Markdown (.md)', 'JSON (.json)', 'Texto plano (.txt)'],
+                 { placeHolder: 'Selecciona el formato de exportación' }
+             );
+             if (!format) {
+                 return;
+             }
+
+             let defaultExt = '.md';
+             let filterName = 'Markdown Files';
+             if (format.includes('JSON')) {
+                 defaultExt = '.json';
+                 filterName = 'JSON Files';
+             } else if (format.includes('Texto')) {
+                 defaultExt = '.txt';
+                 filterName = 'Text Files';
+             }
+
+             const uri = await vscode.window.showSaveDialog({
+                 defaultUri: vscode.Uri.file(path.join(getWorkspaceDirectory() || '', `chat-export${defaultExt}`)),
+                 filters: { [filterName]: [defaultExt.substring(1)] }
+             });
+
+             if (!uri) {
+                 return;
+             }
+
+             let content = '';
+             if (defaultExt === '.json') {
+                 const simpleMessages = messages.map(m => ({
+                     role: m.info.role,
+                     text: partsToDisplayText(m.parts),
+                     timestamp: new Date().toISOString()
+                 }));
+                 content = JSON.stringify(simpleMessages, null, 2);
+             } else if (defaultExt === '.md') {
+                 content = `# Exportación de Conversación de OpenCode\n\n`;
+                 messages.forEach(m => {
+                     const roleDisplay = m.info.role === 'user' ? 'Tú' : 'OpenCode';
+                     content += `### **${roleDisplay}**\n\n${partsToDisplayText(m.parts)}\n\n---\n\n`;
+                 });
+             } else {
+                 messages.forEach(m => {
+                     const roleDisplay = m.info.role === 'user' ? 'Tú' : 'OpenCode';
+                     content += `[${roleDisplay}]:\n${partsToDisplayText(m.parts)}\n\n`;
+                 });
+             }
+
+             await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
+             vscode.window.showInformationMessage(`Conversación exportada exitosamente.`);
+         } catch (error) {
+             const msg = error instanceof Error ? error.message : String(error);
+             vscode.window.showErrorMessage(`Error al exportar conversación: ${msg}`);
+         }
+     }
+
+     private async handleAbortMessage(): Promise<void> {
+         try {
+             await this.service.abortSession();
+             this.post({ type: 'system', text: 'Sesión abortada.' });
+             this.post({ type: 'status', state: 'idle' });
+         } catch (error) {
+             const msg = error instanceof Error ? error.message : String(error);
+             this.post({ type: 'error', message: msg });
+         }
+     }
+
+     private handleOpenSettingsMessage(): void {
+         void vscode.commands.executeCommand('workbench.action.openSettings', '@ext:local.opencode-mcp-vscode');
+     }
+
+     private async handleShowHistoryMessage(): Promise<void> {
+         try {
+             const sessions = await this.service.listSessions();
+             if (sessions.length === 0) {
+                 vscode.window.showInformationMessage('No hay sesiones anteriores.');
+                 return;
+             }
+             const items = sessions.map((s) => ({
+                 label: s.title || `Sesión ${s.id.slice(0, 8)}`,
+                 description: s.id,
+                 session: s,
+             }));
+             const selected = await vscode.window.showQuickPick(items, {
+                 placeHolder: 'Selecciona una sesión para cargar',
+             });
+             if (selected) {
+                 await this.service.selectSession(selected.session.id);
+                 await this.refreshState();
+             }
+         } catch (error) {
+             const msg = error instanceof Error ? error.message : String(error);
+             vscode.window.showErrorMessage(`Error al listar sesiones: ${msg}`);
+         }
+     }
+
+     private async handleAddContextFileMessage(): Promise<void> {
+         const fileUris = await vscode.window.showOpenDialog({
+             canSelectMany: true,
+             openLabel: 'Añadir al contexto',
+             filters: {
+                 'Archivos de código': ['ts', 'js', 'tsx', 'jsx', 'py', 'rs', 'go', 'java', 'cpp', 'c', 'h', 'cs', 'php', 'rb', 'swift', 'kt', 'scala', 'm', 'sh', 'sql', 'md', 'json', 'xml', 'yaml', 'yml', 'toml'],
+                 'Archivos de texto': ['txt', 'log', 'conf', 'ini', 'cfg'],
+                 'Archivos de imagen': ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'],
+                 'Todos los archivos': ['*']
+             }
+         });
+         if (fileUris && fileUris.length > 0) {
+             let successCount = 0;
+             let errorCount = 0;
+             
+             for (const uri of fileUris) {
+                 try {
+                     await this.contextAttachments.addFileUri(uri);
+                     successCount++;
+                 } catch (e) {
+                     const errorMsg = `No se pudo añadir al contexto: ${path.basename(uri.fsPath)} - ${e instanceof Error ? e.message : 'Error desconocido'}`;
+                     this.post({ type: 'error', message: errorMsg });
+                     errorCount++;
+                 }
+             }
+             
+             if (successCount > 0) {
+                 this.post({
+                     type: 'system',
+                     text: `Añadidos ${successCount} archivo(s) al contexto${errorCount > 0 ? `, ${errorCount} error(es)` : ''}.`
+                 });
+             }
+             
+             this.notifyContextChanged();
+         }
+     }
 
     private getHtml(webview: vscode.Webview): string {
         const htmlPath = path.join(
