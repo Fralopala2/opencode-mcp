@@ -11,6 +11,13 @@ import { startOpencodeServer, type ManagedServer } from './serverProcess';
 import { getOpenCodeSettings, getWorkspaceDirectory } from './settings';
 import type { Agent, ServerEvent, Session, SessionMessage } from './types';
 
+/**
+ * Utility function to extract error message from unknown error type
+ */
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
 const execPromise = promisify(exec);
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
@@ -196,11 +203,11 @@ export class OpenCodeService implements vscode.Disposable {
             this.reconnectAttempts = 0;
             void this.startEventSubscription();
             this.setStatus('connected', health.version);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.setStatus('error', message);
-            throw error;
-        }
+         } catch (error) {
+             const message = getErrorMessage(error);
+             this.setStatus('error', message);
+             throw error;
+         }
     }
 
     async disconnect(): Promise<void> {
@@ -377,15 +384,15 @@ export class OpenCodeService implements vscode.Disposable {
             return new Promise<void>((resolve, reject) => {
                 this.pendingPrompts.set(sessionId, { resolve, reject });
             });
-        } catch (error) {
-            this.clearTimeout();
-            const message = error instanceof Error ? error.message : String(error);
-            this.emitStream({
-                sessionId,
-                text: '',
-                done: true,
-                error: message,
-            });
+         } catch (error) {
+             this.clearTimeout();
+             const message = getErrorMessage(error);
+             this.emitStream({
+                 sessionId,
+                 text: '',
+                 done: true,
+                 error: message,
+             });
             throw error;
         }
     }
@@ -452,8 +459,8 @@ export class OpenCodeService implements vscode.Disposable {
                     }
                 }
             }
-            const message = error instanceof Error ? error.message : String(error);
-            this.setStatus('error', `Event stream: ${message}`);
+             const message = getErrorMessage(error);
+             this.setStatus('error', `Event stream: ${message}`);
 
             const activeId = this.sessionId;
             if (activeId && this.activeStream.has(activeId)) {
@@ -482,54 +489,15 @@ export class OpenCodeService implements vscode.Disposable {
               return;
           }
 
-        if (event.type === 'session.idle') {
-            const props = event.properties as { sessionID?: string; error?: any } | undefined;
-            if (props?.sessionID !== sessionId) {
-                return;
-            }
-            if (!this.activeStream.has(sessionId)) {
-                return;
-            }
-            const messages = await this.client.listMessages(sessionId);
-            const lastAssistant = [...messages]
-                .reverse()
-                .find((m) => m.info.role === 'assistant');
-            
-            const text = lastAssistant
-                ? partsToDisplayText(lastAssistant.parts)
-                : '';
-                
-            this.clearTimeout();
-            this.activeStream.delete(sessionId);
-            
-            if (props?.error || lastAssistant?.info?.error) {
-                const errorObj = props?.error || lastAssistant?.info?.error;
-                const errMsg = errorObj?.data?.message || errorObj?.message || errorObj?.name || 'Error del proveedor';
-                
-                const failedOver = await this.attemptFailover(errMsg);
-                if (failedOver) {
-                    return;
-                }
-                
-                this.emitStream({ sessionId, text: '', done: true, error: errMsg, statusDetail: 'Finalizado con error.' });
-            } else {
-                this.emitStream({ sessionId, text, done: true, metrics: lastAssistant?.info?.tokens, statusDetail: 'Listo.' });
-            }
-        }
+         if (event.type === 'session.idle') {
+             await this.handleSessionIdleEvent(event);
+             return;
+         }
 
-        if (event.type === 'permission.updated') {
-            const perm = event.properties as { id: string; sessionID: string; title: string } | undefined;
-            if (perm && perm.sessionID === sessionId) {
-                const prev = this.activeStream.get(sessionId) ?? '';
-                const indicator = `\n> 🔐 Esperando permiso: \`${perm.title}\`...\n`;
-                if (!prev.includes(indicator)) {
-                    const next = prev + indicator;
-                    this.activeStream.set(sessionId, next);
-                    this.emitStream({ sessionId, text: next, done: false, statusDetail: 'Esperando confirmación de permisos...' });
-                }
-            }
-            await this.handlePermission(event.properties);
-     }
+         if (event.type === 'permission.updated') {
+             await this.handlePermissionUpdatedEvent(event);
+             return;
+         }
 }
 
      private async handleMessagePartUpdatedEvent(event: ServerEvent): Promise<void> {
@@ -575,10 +543,66 @@ export class OpenCodeService implements vscode.Disposable {
                  this.activeStream.set(sessionId, next);
                  this.emitStream({ sessionId, text: next, done: false, statusDetail: `Herramienta ${toolName} completada.` });
              }
-         }
-     }
+          }
+      }
 
-     private async attemptFailover(errMsg: string): Promise<boolean> {
+      private async handleSessionIdleEvent(event: ServerEvent): Promise<void> {
+          const sessionId = this.sessionId;
+          if (!sessionId || !this.client) {
+              return;
+          }
+
+          this.resetTimeout(sessionId);
+
+          const props = event.properties as { sessionID?: string; error?: any } | undefined;
+          if (props?.sessionID !== sessionId) {
+              return;
+          }
+          if (!this.activeStream.has(sessionId)) {
+              return;
+          }
+          const messages = await this.client.listMessages(sessionId);
+          const lastAssistant = [...messages]
+              .reverse()
+              .find((m) => m.info.role === 'assistant');
+          
+          const text = lastAssistant
+              ? partsToDisplayText(lastAssistant.parts)
+              : '';
+              
+          this.clearTimeout();
+          this.activeStream.delete(sessionId);
+          
+          if (props?.error || lastAssistant?.info?.error) {
+              const errorObj = props?.error || lastAssistant?.info?.error;
+              const errMsg = errorObj?.data?.message || errorObj?.message || errorObj?.name || 'Error del proveedor';
+              
+              const failedOver = await this.attemptFailover(errMsg);
+              if (failedOver) {
+                  return;
+              }
+              
+              this.emitStream({ sessionId, text: '', done: true, error: errMsg, statusDetail: 'Finalizado con error.' });
+          } else {
+              this.emitStream({ sessionId, text, done: true, metrics: lastAssistant?.info?.tokens, statusDetail: 'Listo.' });
+           }
+       }
+
+       private async handlePermissionUpdatedEvent(event: ServerEvent): Promise<void> {
+             const perm = event.properties as { id: string; sessionID: string; title: string } | undefined;
+             if (perm && perm.sessionID === this.sessionId) {
+                 const prev = this.activeStream.get(this.sessionId) ?? '';
+                 const indicator = `\n> 🔐 Esperando permiso: \`${perm.title}\`...\n`;
+                 if (!prev.includes(indicator)) {
+                     const next = prev + indicator;
+                     this.activeStream.set(this.sessionId, next);
+                     this.emitStream({ sessionId: this.sessionId, text: next, done: false, statusDetail: 'Esperando confirmación de permisos...' });
+                 }
+             }
+             await this.handlePermission(event.properties);
+       }
+
+       private async attemptFailover(errMsg: string): Promise<boolean> {
         if (!this.lastPromptInfo || !this.sessionId || !this.client) return false;
         
         let providerName = 'openai';

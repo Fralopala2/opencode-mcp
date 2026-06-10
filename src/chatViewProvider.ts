@@ -16,6 +16,10 @@ function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
 
+// Tamaños máximos en bytes
+const MAX_FOLDER_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;    // 10MB
+
 export class ChatViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'opencode.mcp';
 
@@ -39,7 +43,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                          const today = new Date().toISOString().split('T')[0];
                          const model = this.service.getSelectedModel() || 'default';
                          
-                         let costData: Record<string, any> = JSON.parse(JSON.stringify(this.context.globalState.get('costData') || {}));
+                          let costData: Record<string, any> = this.context.globalState.get('costData') as Record<string, any> || {};
                          
                          const cost = this.calculateCost(update.metrics.input, update.metrics.output, model);
                          
@@ -182,10 +186,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                      costData,
                      gitInfo
                  });
-         } catch (error) {
-             const msg = getErrorMessage(error);
-             this.post({ type: 'error', message: msg });
-         }
+          } catch (error) {
+              const msg = getErrorMessage(error);
+              this.post({ type: 'error', message: msg });
+          }
     }
 
     getContextAttachments(): ContextAttachments {
@@ -239,267 +243,56 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                  await this.handleAddContextFileMessage();
                  break;
              }
-            case 'removeContext': {
-                const index = message.index;
-                if (typeof index === 'number') {
-                    this.contextAttachments.removePart(index);
-                    this.notifyContextChanged();
-                }
-                break;
-            }
-            case 'quickAction': {
-                const action = message.text;
-                if (this.contextAttachments.getItems().length === 0) {
-                    await this.contextAttachments.addCurrentFile();
-                    this.notifyContextChanged();
-                }
-                const text = action;
-                const agent = this.selectedAgent || undefined;
-                const model = message.model || undefined;
-                const contextParts = [...this.contextAttachments.getItems()];
-                this.contextAttachments.clear();
-                this.post({ type: 'status', state: 'busy' });
-                this.post({
-                    type: 'context',
-                    items: [],
-                });
-                try {
-                    await this.service.sendPrompt(text || '', agent, model, contextParts, []);
-                } catch (error) {
-                    const msg = error instanceof Error ? error.message : String(error);
-                    this.post({ type: 'error', message: msg });
-                    this.post({ type: 'status', state: 'idle' });
-                }
-                break;
-            }
-            case 'insertCodeBlock': {
-                const editor = vscode.window.activeTextEditor;
-                if (editor) {
-                    const selection = editor.document.getText(editor.selection);
-                    const formatted = selection ? `\`\`\`\n${selection}\n\`\`\`` : `\`\`\`\n\n\`\`\``;
-                    this.post({ type: 'insertText', text: formatted });
-                } else {
-                    this.post({ type: 'insertText', text: `\`\`\`\n\n\`\`\`` });
-                }
-                break;
-            }
-            case 'addCurrentFileToContext': {
-                await this.contextAttachments.addCurrentFile();
-                this.notifyContextChanged();
-                break;
-            }
-            case 'addSelectionToContext': {
-                await this.contextAttachments.addSelection();
-                this.notifyContextChanged();
-                break;
-            }
-            case 'addOpenFilesToContext': {
-                const count = await this.contextAttachments.addOpenFiles();
-                this.notifyContextChanged();
-                this.post({
-                    type: 'system',
-                    text: `Añadidos ${count} archivo(s) abiertos al contexto.`
-                });
-                break;
-            }
-            case 'addGitToContext': {
-                const workspaceDir = getWorkspaceDirectory();
-                if (workspaceDir) {
-                    const gitInfo = await gitProvider.getGitInfo(workspaceDir);
-                    if (gitInfo) {
-                        const formattedInfo = gitProvider.formatGitInfo(gitInfo);
-                        this.contextAttachments.addPart({
-                            type: 'text',
-                            text: formattedInfo
-                        });
-                        this.notifyContextChanged();
-                        this.post({
-                            type: 'system',
-                            text: `Información de Git añadida al contexto (branch: \`${gitInfo.branch}\`)`
-                        });
-                    } else {
-                        vscode.window.showInformationMessage('No se detectó un repositorio Git en el workspace.');
-                    }
-                } else {
-                    vscode.window.showErrorMessage('No hay directorio de espacio de trabajo abierto.');
-                }
-                break;
-            }
-            case 'refreshGitInfo': {
-                const workspaceDir = getWorkspaceDirectory();
-                if (workspaceDir) {
-                    const gitInfo = await gitProvider.getGitInfo(workspaceDir);
-                    this.post({
-                        type: 'gitInfoUpdate',
-                        gitInfo
-                    });
-                }
-                break;
-            }
-            case 'gitDiff': {
-                const cwd = getWorkspaceDirectory();
-                if (cwd) {
-                    execFile('git', ['diff'], { cwd }, (err, stdout, stderr) => {
-                        if (stdout) {
-                            this.contextAttachments.addPart({
-                                type: 'text',
-                                text: `Archivo: git-diff.patch\n\`\`\`diff\n${stdout}\n\`\`\``
-                            });
-                            this.notifyContextChanged();
-                        } else {
-                            vscode.window.showInformationMessage('No hay cambios sin confirmar (git diff vacío).');
-                        }
-                    });
-                } else {
-                    vscode.window.showErrorMessage('No hay directorio de espacio de trabajo abierto.');
-                }
-                break;
-            }
-              case 'attachFolder':
-                 const folderUri = await vscode.window.showOpenDialog({
-                     canSelectFiles: false,
-                     canSelectFolders: true,
-                     canSelectMany: false,
-                     openLabel: 'Adjuntar Carpeta',
-                 });
-                 if (folderUri && folderUri.length > 0) {
-                     const folderPath = folderUri[0].fsPath;
-                     
-                     try {
-                         // Verificar si la carpeta existe y es accesible
-                         const stats = await fs.promises.stat(folderPath);
-                         if (!stats.isDirectory()) {
-                             this.post({ type: 'error', message: 'La ruta seleccionada no es una carpeta válida.' });
-                             return;
-                         }
-                         
-                         // Limitar el tamaño de la carpeta (evitar carpetas demasiado grandes)
-                         const maxSize = 100 * 1024 * 1024; // 100MB
-                         let folderSize = 0;
-                         
-                         try {
-                             // Calcular tamaño total de la carpeta
-                             const calculateFolderSize = async (dir: string): Promise<number> => {
-                                 let size = 0;
-                                 const files = await fs.promises.readdir(dir);
-                                 for (const file of files) {
-                                     const filePath = path.join(dir, file);
-                                     const fileStats = await fs.promises.stat(filePath);
-                                     if (fileStats.isDirectory()) {
-                                         size += await calculateFolderSize(filePath);
-                                     } else {
-                                         size += fileStats.size;
-                                         if (size > maxSize) {
-                                             throw new Error('La carpeta es demasiado grande (máximo 100MB)');
-                                         }
-                                     }
-                                 }
-                                 return size;
-                             };
-                             
-                             folderSize = await calculateFolderSize(folderPath);
-                         } catch (sizeError) {
-                             this.post({ type: 'error', message: sizeError instanceof Error ? sizeError.message : 'La carpeta es demasiado grande' });
-                             return;
-                         }
-                         
-                         this.contextAttachments.addPart({
-                             type: 'text',
-                             text: `Carpeta adjunta: ${folderPath}\nTamaño total: ${(folderSize / 1024 / 1024).toFixed(2)} MB\nContiene: ${await this.getFileCount(folderPath)} archivos`,
-                         });
-                         this.notifyContextChanged();
-                         this.post({
-                             type: 'system',
-                             text: `Carpeta adjunta al contexto: ${folderPath}`,
-                         });
-                         
-                     } catch (error) {
-                         const errorMsg = `No se pudo adjuntar la carpeta: ${error instanceof Error ? error.message : 'Error desconocido'}`;
-                         this.post({ type: 'error', message: errorMsg });
-                     }
-                 }
+             case 'removeContext': {
+                 await this.handleRemoveContextMessage(message);
                  break;
-              case 'attachFile':
-                 const fileUris = await vscode.window.showOpenDialog({
-                     canSelectMany: true,
-                     openLabel: 'Adjuntar',
-                     filters: {
-                         'Archivos de imagen': ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'],
-                         'Archivos de texto': ['txt', 'log', 'conf', 'ini', 'cfg', 'md'],
-                         'Todos los archivos': ['*']
-                     }
-                 });
-                 if (fileUris && fileUris.length > 0) {
-                     let successCount = 0;
-                     let errorCount = 0;
-                     
-                     for (const uri of fileUris) {
-                         try {
-                             const buffer = await vscode.workspace.fs.readFile(uri);
-                             let mime = 'application/octet-stream';
-                             const ext = path.extname(uri.fsPath).toLowerCase();
-                             if (['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext)) {
-                                 mime = `image/${ext.replace('.', '').replace('jpg', 'jpeg')}`;
-                                 const b64 = Buffer.from(buffer).toString('base64');
-                                 this.post({
-                                     type: 'fileAttached',
-                                     attachment: {
-                                         type: 'file',
-                                         mime,
-                                         filename: path.basename(uri.fsPath),
-                                         url: `data:${mime};base64,${b64}`,
-                                     },
-                                 });
-                             } else {
-                                 // Validar tamaño del archivo para archivos de texto
-                                 const maxSize = 10 * 1024 * 1024; // 10MB
-                                 if (buffer.length > maxSize) {
-                                     this.post({ 
-                                         type: 'error', 
-                                         message: `El archivo ${path.basename(uri.fsPath)} es demasiado grande (máximo 10MB)` 
-                                     });
-                                     errorCount++;
-                                     continue;
-                                 }
-                                 
-                                 // Enviar la ruta del archivo para archivos locales no-imágenes
-                                 this.post({
-                                     type: 'fileAttached',
-                                     attachment: {
-                                         type: 'file',
-                                         mime: 'text/plain',
-                                         filename: path.basename(uri.fsPath),
-                                         url: `file://${uri.fsPath}`,
-                                     },
-                                 });
-                             }
-                             successCount++;
-                         } catch (e) {
-                             const errorMsg = `No se pudo adjuntar: ${path.basename(uri.fsPath)} - ${e instanceof Error ? e.message : 'Error desconocido'}`;
-                             this.post({ type: 'error', message: errorMsg });
-                             errorCount++;
-                         }
-                     }
-                     
-                     if (successCount > 0) {
-                         this.post({
-                             type: 'system',
-                             text: `Adjuntados ${successCount} archivo(s)${errorCount > 0 ? `, ${errorCount} error(es)` : ''}.`
-                         });
-                     }
-                 }
+             }
+             case 'quickAction': {
+                 await this.handleQuickActionMessage(message);
                  break;
-            case 'loadCostData': {
-                let costData: Record<string, any> = JSON.parse(JSON.stringify(this.context.globalState.get('costData') || {}));
-                this.post({ type: 'costDataUpdate', costData });
-                break;
-            }
-            case 'copyToClipboard': {
-                if (message.text) {
-                    await vscode.env.clipboard.writeText(message.text);
-                }
-                break;
-            }
+             }
+             case 'insertCodeBlock': {
+                 await this.handleInsertCodeBlockMessage();
+                 break;
+             }
+             case 'addCurrentFileToContext': {
+                 await this.handleAddCurrentFileToContextMessage();
+                 break;
+             }
+             case 'addSelectionToContext': {
+                 await this.handleAddSelectionToContextMessage();
+                 break;
+             }
+             case 'addOpenFilesToContext': {
+                 await this.handleAddOpenFilesToContextMessage();
+                 break;
+             }
+             case 'addGitToContext': {
+                 await this.handleAddGitToContextMessage();
+                 break;
+             }
+             case 'refreshGitInfo': {
+                 await this.handleRefreshGitInfoMessage();
+                 break;
+             }
+             case 'gitDiff': {
+                 await this.handleGitDiffMessage();
+                 break;
+             }
+               case 'attachFolder':
+                   await this.handleAttachFolderMessage();
+                   break;
+               case 'attachFile':
+                  await this.handleAttachFileMessage();
+                  break;
+             case 'loadCostData': {
+                 await this.handleLoadCostDataMessage();
+                 break;
+             }
+             case 'copyToClipboard': {
+                 await this.handleCopyToClipboardMessage(message);
+                 break;
+             }
             default:
                 break;
         }
@@ -533,11 +326,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
          });
          try {
              await this.service.sendPrompt(text || '', agent, model, contextParts, attachments);
-         } catch (error) {
-             const msg = error instanceof Error ? error.message : String(error);
-             this.post({ type: 'error', message: msg });
-             this.post({ type: 'status', state: 'idle' });
-         }
+          } catch (error) {
+              const msg = getErrorMessage(error);
+              this.post({ type: 'error', message: msg });
+              this.post({ type: 'status', state: 'idle' });
+          }
      }
 
      private handleSetAgentMessage(message: any): void {
@@ -550,25 +343,25 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
      private async handleReconnectMessage(): Promise<void> {
          this.post({ type: 'status', state: 'connecting' });
-         try {
-             await this.service.reconnect();
-             await this.refreshState();
-         } catch (error) {
-             const msg = error instanceof Error ? error.message : String(error);
-             this.post({ type: 'error', message: msg });
-         }
+          try {
+              await this.service.reconnect();
+              await this.refreshState();
+          } catch (error) {
+              const msg = getErrorMessage(error);
+              this.post({ type: 'error', message: msg });
+          }
      }
 
-     private async handleNewSessionMessage(): Promise<void> {
-         try {
-             await this.service.newSession();
-             await this.refreshState();
-             this.post({ type: 'system', text: 'Nueva sesión creada.' });
-         } catch (error) {
-             const msg = error instanceof Error ? error.message : String(error);
-             this.post({ type: 'error', message: msg });
-         }
-     }
+      private async handleNewSessionMessage(): Promise<void> {
+          try {
+              await this.service.newSession();
+              await this.refreshState();
+              this.post({ type: 'system', text: 'Nueva sesión creada.' });
+          } catch (error) {
+              const msg = getErrorMessage(error);
+              this.post({ type: 'error', message: msg });
+          }
+      }
 
      private async handleClearChatMessage(): Promise<void> {
          const choice = await vscode.window.showWarningMessage(
@@ -581,10 +374,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                  await this.service.newSession();
                  await this.refreshState();
                  this.post({ type: 'chatCleared' });
-             } catch (error) {
-                 const msg = error instanceof Error ? error.message : String(error);
-                 this.post({ type: 'error', message: msg });
-             }
+          } catch (error) {
+              const msg = getErrorMessage(error);
+              this.post({ type: 'error', message: msg });
+          }
          }
      }
 
@@ -651,22 +444,22 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
              await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
              vscode.window.showInformationMessage(`Conversación exportada exitosamente.`);
-         } catch (error) {
-             const msg = error instanceof Error ? error.message : String(error);
-             vscode.window.showErrorMessage(`Error al exportar conversación: ${msg}`);
-         }
+          } catch (error) {
+              const msg = getErrorMessage(error);
+              vscode.window.showErrorMessage(`Error al exportar conversación: ${msg}`);
+          }
      }
 
-     private async handleAbortMessage(): Promise<void> {
-         try {
-             await this.service.abortSession();
-             this.post({ type: 'system', text: 'Sesión abortada.' });
-             this.post({ type: 'status', state: 'idle' });
-         } catch (error) {
-             const msg = error instanceof Error ? error.message : String(error);
-             this.post({ type: 'error', message: msg });
-         }
-     }
+      private async handleAbortMessage(): Promise<void> {
+          try {
+              await this.service.abortSession();
+              this.post({ type: 'system', text: 'Sesión abortada.' });
+              this.post({ type: 'status', state: 'idle' });
+          } catch (error) {
+              const msg = getErrorMessage(error);
+              this.post({ type: 'error', message: msg });
+          }
+      }
 
      private handleOpenSettingsMessage(): void {
          void vscode.commands.executeCommand('workbench.action.openSettings', '@ext:local.opencode-mcp-vscode');
@@ -691,10 +484,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                  await this.service.selectSession(selected.session.id);
                  await this.refreshState();
              }
-         } catch (error) {
-             const msg = error instanceof Error ? error.message : String(error);
-             vscode.window.showErrorMessage(`Error al listar sesiones: ${msg}`);
-         }
+          } catch (error) {
+              const msg = getErrorMessage(error);
+              vscode.window.showErrorMessage(`Error al listar sesiones: ${msg}`);
+          }
      }
 
      private async handleAddContextFileMessage(): Promise<void> {
@@ -712,16 +505,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
              let successCount = 0;
              let errorCount = 0;
              
-             for (const uri of fileUris) {
-                 try {
-                     await this.contextAttachments.addFileUri(uri);
-                     successCount++;
-                 } catch (e) {
-                     const errorMsg = `No se pudo añadir al contexto: ${path.basename(uri.fsPath)} - ${e instanceof Error ? e.message : 'Error desconocido'}`;
-                     this.post({ type: 'error', message: errorMsg });
-                     errorCount++;
-                 }
-             }
+              for (const uri of fileUris) {
+                  try {
+                      await this.contextAttachments.addFileUri(uri);
+                      successCount++;
+                  } catch (e) {
+                      const errorMsg = `No se pudo añadir al contexto: ${path.basename(uri.fsPath)} - ${getErrorMessage(e)}`;
+                      this.post({ type: 'error', message: errorMsg });
+                      errorCount++;
+                  }
+              }
              
              if (successCount > 0) {
                  this.post({
@@ -730,11 +523,274 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                  });
              }
              
-             this.notifyContextChanged();
+              this.notifyContextChanged();
+          }
+      }
+
+      private async handleRemoveContextMessage(message: any): Promise<void> {
+          const index = message.index;
+          if (typeof index === 'number') {
+              this.contextAttachments.removePart(index);
+              this.notifyContextChanged();
+          }
+      }
+
+      private async handleQuickActionMessage(message: any): Promise<void> {
+          const action = message.text;
+          if (this.contextAttachments.getItems().length === 0) {
+              await this.contextAttachments.addCurrentFile();
+              this.notifyContextChanged();
+          }
+          const text = action;
+          const agent = this.selectedAgent || undefined;
+          const model = message.model || undefined;
+          const contextParts = [...this.contextAttachments.getItems()];
+          this.contextAttachments.clear();
+          this.post({ type: 'status', state: 'busy' });
+          this.post({
+              type: 'context',
+              items: [],
+          });
+          try {
+              await this.service.sendPrompt(text || '', agent, model, contextParts, []);
+          } catch (error) {
+              const msg = getErrorMessage(error);
+              this.post({ type: 'error', message: msg });
+              this.post({ type: 'status', state: 'idle' });
+          }
+      }
+
+      private async handleInsertCodeBlockMessage(): Promise<void> {
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+              const selection = editor.document.getText(editor.selection);
+              const formatted = selection ? `\`\`\`\n${selection}\n\`\`\`` : `\`\`\`\n\n\`\`\``;
+              this.post({ type: 'insertText', text: formatted });
+          } else {
+              this.post({ type: 'insertText', text: `\`\`\`\n\n\`\`\`` });
+          }
+      }
+
+      private async handleAddCurrentFileToContextMessage(): Promise<void> {
+          await this.contextAttachments.addCurrentFile();
+          this.notifyContextChanged();
+      }
+
+      private async handleAddSelectionToContextMessage(): Promise<void> {
+          await this.contextAttachments.addSelection();
+          this.notifyContextChanged();
+      }
+
+      private async handleAddOpenFilesToContextMessage(): Promise<void> {
+          const count = await this.contextAttachments.addOpenFiles();
+          this.notifyContextChanged();
+          this.post({
+              type: 'system',
+              text: `Añadidos ${count} archivo(s) abiertos al contexto.`
+          });
+      }
+
+      private async handleAddGitToContextMessage(): Promise<void> {
+          const workspaceDir = getWorkspaceDirectory();
+          if (workspaceDir) {
+              const gitInfo = await gitProvider.getGitInfo(workspaceDir);
+              if (gitInfo) {
+                  const formattedInfo = gitProvider.formatGitInfo(gitInfo);
+                  this.contextAttachments.addPart({
+                      type: 'text',
+                      text: formattedInfo
+                  });
+                  this.notifyContextChanged();
+                  this.post({
+                      type: 'system',
+                      text: `Información de Git añadida al contexto (branch: \`${gitInfo.branch}\`)`
+                  });
+              } else {
+                  vscode.window.showInformationMessage('No se detectó un repositorio Git en el workspace.');
+              }
+          } else {
+              vscode.window.showErrorMessage('No hay directorio de espacio de trabajo abierto.');
+          }
+      }
+
+      private async handleRefreshGitInfoMessage(): Promise<void> {
+          const workspaceDir = getWorkspaceDirectory();
+          if (workspaceDir) {
+              const gitInfo = await gitProvider.getGitInfo(workspaceDir);
+              this.post({
+                  type: 'gitInfoUpdate',
+                  gitInfo
+              });
+          }
+      }
+
+      private async handleGitDiffMessage(): Promise<void> {
+          const cwd = getWorkspaceDirectory();
+          if (cwd) {
+              execFile('git', ['diff'], { cwd }, (err, stdout, stderr) => {
+                  if (stdout) {
+                      this.contextAttachments.addPart({
+                          type: 'text',
+                          text: `Archivo: git-diff.patch\n\`\`\`diff\n${stdout}\n\`\`\``
+                      });
+                      this.notifyContextChanged();
+                  } else {
+                      vscode.window.showInformationMessage('No hay cambios sin confirmar (git diff vacío).');
+                  }
+              });
+          } else {
+              vscode.window.showErrorMessage('No hay directorio de espacio de trabajo abierto.');
+       }
+    }
+
+    private async handleAttachFolderMessage(): Promise<void> {
+        const folderUri = await vscode.window.showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+            openLabel: 'Adjuntar Carpeta',
+        });
+        if (folderUri && folderUri.length > 0) {
+            const folderPath = folderUri[0].fsPath;
+            
+            try {
+                // Verificar si la carpeta existe y es accesible
+                const stats = await fs.promises.stat(folderPath);
+                if (!stats.isDirectory()) {
+                    this.post({ type: 'error', message: 'La ruta seleccionada no es una carpeta válida.' });
+                    return;
+                }
+                
+                // Limitar el tamaño de la carpeta (evitar carpetas demasiado grandes)
+                const maxSize = MAX_FOLDER_SIZE;
+                let folderSize = 0;
+                
+                try {
+                    // Calcular tamaño total de la carpeta
+                    const calculateFolderSize = async (dir: string): Promise<number> => {
+                        let size = 0;
+                        const files = await fs.promises.readdir(dir);
+                        for (const file of files) {
+                            const filePath = path.join(dir, file);
+                            const fileStats = await fs.promises.stat(filePath);
+                            if (fileStats.isDirectory()) {
+                                size += await calculateFolderSize(filePath);
+                            } else {
+                                size += fileStats.size;
+                                if (size > maxSize) {
+                                    throw new Error('La carpeta es demasiado grande (máximo 100MB)');
+                                }
+                            }
+                        }
+                        return size;
+                    };
+                    
+                    folderSize = await calculateFolderSize(folderPath);
+                } catch (sizeError) {
+                    this.post({ type: 'error', message: getErrorMessage(sizeError) });
+                    return;
+                }
+                
+                this.contextAttachments.addPart({
+                    type: 'text',
+                    text: `Carpeta adjunta: ${folderPath}\nTamaño total: ${(folderSize / 1024 / 1024).toFixed(2)} MB\nContiene: ${await this.getFileCount(folderPath)} archivos`,
+                });
+                this.notifyContextChanged();
+                this.post({
+                    type: 'system',
+                    text: `Carpeta adjunta al contexto: ${folderPath}`,
+                });
+                
+             } catch (error) {
+                 const errorMsg = `No se pudo adjuntar la carpeta: ${getErrorMessage(error)}`;
+                 this.post({ type: 'error', message: errorMsg });
+             }
          }
      }
 
-    private getHtml(webview: vscode.Webview): string {
+     private async handleAttachFileMessage(): Promise<void> {
+         const fileUris = await vscode.window.showOpenDialog({
+             canSelectMany: true,
+             openLabel: 'Adjuntar',
+             filters: {
+                 'Archivos de imagen': ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'],
+                 'Archivos de texto': ['txt', 'log', 'conf', 'ini', 'cfg', 'md'],
+                 'Todos los archivos': ['*']
+             }
+         });
+         if (fileUris && fileUris.length > 0) {
+             let successCount = 0;
+             let errorCount = 0;
+             
+             for (const uri of fileUris) {
+                 try {
+                     const buffer = await vscode.workspace.fs.readFile(uri);
+                     let mime = 'application/octet-stream';
+                     const ext = path.extname(uri.fsPath).toLowerCase();
+                     if (['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext)) {
+                         mime = `image/${ext.replace('.', '').replace('jpg', 'jpeg')}`;
+                         const b64 = Buffer.from(buffer).toString('base64');
+                         this.post({
+                             type: 'fileAttached',
+                             attachment: {
+                                 type: 'file',
+                                 mime,
+                                 filename: path.basename(uri.fsPath),
+                                 url: `data:${mime};base64,${b64}`,
+                             },
+                         });
+                      } else {
+                          // Validar tamaño del archivo para archivos de texto
+                          const maxSize = MAX_FILE_SIZE;
+                          if (buffer.length > maxSize) {
+                             this.post({ 
+                                 type: 'error', 
+                                 message: `El archivo ${path.basename(uri.fsPath)} es demasiado grande (máximo 10MB)` 
+                             });
+                             errorCount++;
+                             continue;
+                         }
+                         
+                         // Enviar la ruta del archivo para archivos locales no-imágenes
+                         this.post({
+                             type: 'fileAttached',
+                             attachment: {
+                                 type: 'file',
+                                 mime: 'text/plain',
+                                 filename: path.basename(uri.fsPath),
+                                 url: `file://${uri.fsPath}`,
+                             },
+                         });
+                     }
+                     successCount++;
+                 } catch (e) {
+                     const errorMsg = `No se pudo adjuntar: ${path.basename(uri.fsPath)} - ${getErrorMessage(e)}`;
+                     this.post({ type: 'error', message: errorMsg });
+                     errorCount++;
+                 }
+             }
+             
+             if (successCount > 0) {
+                 this.post({
+                     type: 'system',
+                     text: `Adjuntados ${successCount} archivo(s)${errorCount > 0 ? `, ${errorCount} error(es)` : ''}.`
+                 });
+             }
+          }
+      }
+
+       private async handleLoadCostDataMessage(): Promise<void> {
+           let costData: Record<string, any> = JSON.parse(JSON.stringify(this.context.globalState.get('costData') || {}));
+           this.post({ type: 'costDataUpdate', costData });
+       }
+
+       private async handleCopyToClipboardMessage(message: any): Promise<void> {
+           if (message.text) {
+               await vscode.env.clipboard.writeText(message.text);
+           }
+       }
+
+       private getHtml(webview: vscode.Webview): string {
         const htmlPath = path.join(
             this.context.extensionUri.fsPath,
             'resources',

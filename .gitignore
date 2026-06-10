@@ -21,6 +21,7 @@ out/
 *.tmp
 *.log
 comandos.md
+PROVIDERS.md
 
 # Ignore plan de ruta temporal
 plan_ruta_api_balancer.md
