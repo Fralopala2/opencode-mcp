@@ -6,6 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Released]
 
+## [1.0.12] - 2026-06-10
+
+### Documentación
+- **README**: Corregida la alineación visual de las capturas de pantalla para el Marketplace usando tablas Markdown.
+- **Marketplace**: Actualizadas las instrucciones de instalación añadiendo los enlaces directos a la tienda.
+
 ## [1.0.11] - 2026-06-10
 
 ### Nuevas Funcionalidades y Refactorización
