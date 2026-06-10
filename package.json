@@ -1,9 +1,9 @@
 {
   "name": "opencode-mcp-vscode",
-  "displayName": "OpenCode Panel",
+  "displayName": "OpenCode Chat Panel",
   "description": "%extension.description%",
-  "version": "1.0.8",
-  "publisher": "pacoaldev@gmail.com",
+  "version": "1.0.10",
+  "publisher": "Pacoaldev",
   "repository": {
     "type": "git",
     "url": "https://github.com/fralopala2/opencode-mcp.git"
@@ -15,8 +15,7 @@
     "Other",
     "Machine Learning",
     "AI",
-    "LLM",
-    "OpenCode"
+    "Chat"
   ],
   "icon": "resources/logo.png",
   "main": "./out/extension.js",

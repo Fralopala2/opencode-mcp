@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="resources/logo.png" alt="OpenCode Panel Logo" width="300" />
+  <img src="https://raw.githubusercontent.com/fralopala2/opencode-mcp/main/resources/logo.png" alt="OpenCode Panel Logo" width="300" />
 </div>
 
 # OpenCode Panel (VS Code / Antigravity)
@@ -8,9 +8,9 @@ Esta extensión para VS Code / Antigravity es un **panel lateral de chat** conec
 
 
 <div align="center">
-  <img src="resources/1.png" alt="Panel de Chat 1" height="300" style="vertical-align: middle; margin: 0 10px;" />
-  <img src="resources/2.png" alt="Panel de Chat 2" height="300" style="vertical-align: middle; margin: 0 10px;" />
-  <img src="resources/3.png" alt="Panel de Chat 3" height="300" style="vertical-align: middle; margin: 0 10px;" />
+  <img src="https://raw.githubusercontent.com/fralopala2/opencode-mcp/main/resources/1.png" alt="Panel de Chat 1" height="300" style="vertical-align: middle; margin: 0 10px;" />
+  <img src="https://raw.githubusercontent.com/fralopala2/opencode-mcp/main/resources/2.png" alt="Panel de Chat 2" height="300" style="vertical-align: middle; margin: 0 10px;" />
+  <img src="https://raw.githubusercontent.com/fralopala2/opencode-mcp/main/resources/3.png" alt="Panel de Chat 3" height="300" style="vertical-align: middle; margin: 0 10px;" />
 </div>
 
 
