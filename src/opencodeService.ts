@@ -134,12 +134,12 @@ export class OpenCodeService implements vscode.Disposable {
 
     persistSelectedModel(model: string): void {
         const key = `model.${this.workspaceKey()}`;
-        void OpenCodeService.extensionContext?.workspaceState.update(key, model);
+        void OpenCodeService.extensionContext?.globalState.update(key, model || undefined);
     }
 
     getSelectedModel(): string | undefined {
         const key = `model.${this.workspaceKey()}`;
-        return OpenCodeService.extensionContext?.workspaceState.get<string>(key);
+        return OpenCodeService.extensionContext?.globalState.get<string>(key);
     }
 
     private persistSessionId(sessionId: string): void {
