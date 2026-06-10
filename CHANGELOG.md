@@ -6,6 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Released]
 
+## [1.0.13] - 2026-06-10
+
+### Nuevas Funcionalidades
+- **Gestión de Costos**: Implementado seguimiento de costos de uso y reporte por modelo en el panel de chat de forma nativa (`ChatViewProvider`).
+- **Contexto**: Añadida la opción de adjuntar carpetas completas y archivos múltiples directamente desde la interfaz del chat.
+- **Integración LLM**: Mejorada la integración en `OpenCodeService` para procesar el streaming de respuestas de herramientas y texto de forma separada.
+
 ## [1.0.12] - 2026-06-10
 
 ### Documentación
