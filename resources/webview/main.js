@@ -1021,6 +1021,7 @@ if (gitDiffBtn) {
         break;
        case 'assistantDone':
          finishStream(msg.text, msg.metrics);
+         setStatus('idle');
          if (msg.metrics) {
            const today = new Date().toISOString().split('T')[0];
            const model = selectedModel || 'default';
